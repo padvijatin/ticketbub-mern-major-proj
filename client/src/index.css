@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Urbanist, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  :root {
+    --color-primary: #f84464;
+    --color-primary-hover: #df2e4f;
+    --color-accent: #7b3fe4;
+    --color-bg-main: #f5f5f5;
+    --color-bg-card: #ffffff;
+    --color-bg-dark: #1c1c1c;
+    --color-text-primary: #1c1c1c;
+    --color-text-secondary: #6b7280;
+    --color-text-light: #ffffff;
+    --color-button-dark: #111111;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #3b82f6;
+    --color-card-music: #e9f1ff;
+    --color-card-comedy: #fff4d6;
+    --color-card-performance: #ffe8e2;
+    --color-card-conference: #e7f6f3;
+    --color-card-openmic: #f1e9ff;
+    --shadow-soft: 0 18px 45px rgba(28, 28, 28, 0.08);
+  }
+
+  html {
+    font-size: 62.5%;
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--color-bg-main);
+    color: var(--color-text-primary);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: clamp(2.8rem, 4.2vw, 4.8rem);
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  li {
+    list-style: none;
+  }
+}
