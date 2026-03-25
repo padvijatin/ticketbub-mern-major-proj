@@ -1,14 +1,4 @@
-import { EventCard } from "./EventCard.jsx";
-
-const SkeletonCard = () => (
-  <article className="overflow-hidden rounded-[2.2rem] border border-[rgba(28,28,28,0.08)] bg-white shadow-[var(--shadow-soft)]">
-    <div className="aspect-[2/3] animate-pulse bg-[linear-gradient(180deg,#f3f4f6_0%,#e5e7eb_100%)]" />
-    <div className="grid gap-[1rem] p-[1.6rem]">
-      <div className="h-[1.8rem] w-[68%] animate-pulse rounded-full bg-[#e5e7eb]" />
-      <div className="h-[1.4rem] w-[52%] animate-pulse rounded-full bg-[#ececec]" />
-    </div>
-  </article>
-);
+﻿import EventCard from "./EventCard.jsx";
 
 export const ListingGrid = ({
   items,
@@ -17,12 +7,13 @@ export const ListingGrid = ({
   columnsClassName = "sm:grid-cols-2 lg:grid-cols-3",
   emptyMessage = "No listings are available right now.",
   skeletonCount = 3,
+  cardSize = "default",
 }) => {
   if (isLoading) {
     return (
-      <div className={`grid gap-[1.8rem] ${columnsClassName}`}>
+      <div className={`grid auto-rows-fr gap-[2rem] ${columnsClassName}`}>
         {Array.from({ length: skeletonCount }, (_, index) => (
-          <SkeletonCard key={index} />
+          <EventCard key={index} isLoading size={cardSize} />
         ))}
       </div>
     );
@@ -45,9 +36,9 @@ export const ListingGrid = ({
   }
 
   return (
-    <div className={`grid gap-[1.8rem] ${columnsClassName}`}>
+    <div className={`grid auto-rows-fr gap-[2rem] ${columnsClassName}`}>
       {items.map((item) => (
-        <EventCard key={item.id || item.title} event={item} />
+        <EventCard key={item.id || item.title} event={item} size={cardSize} />
       ))}
     </div>
   );

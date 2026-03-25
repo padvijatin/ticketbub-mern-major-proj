@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { ListingGrid } from "../components/ListingGrid.jsx";
 import { getEvents } from "../utils/eventApi.js";
 
@@ -40,7 +40,7 @@ export const Sports = () => {
 
   return (
     <main className="py-[3rem]">
-      <section className="mx-auto w-[min(120rem,calc(100%_-_3.2rem))]">
+      <section className="mx-auto w-[min(132rem,calc(100%_-_3.2rem))]">
         <div className="mb-[2.6rem]">
           <span className="inline-flex rounded-full bg-[rgba(248,68,100,0.08)] px-[1.2rem] py-[0.8rem] text-[1.2rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-primary)]">
             Sports
@@ -57,9 +57,10 @@ export const Sports = () => {
           items={sports}
           isLoading={isLoading}
           error={error}
-          columnsClassName="sm:grid-cols-2 lg:grid-cols-3"
+          columnsClassName="sm:grid-cols-2 xl:grid-cols-4"
           emptyMessage="No sports events match your database records yet."
-          skeletonCount={3}
+          skeletonCount={4}
+          cardSize="listing"
         />
       </section>
     </main>
