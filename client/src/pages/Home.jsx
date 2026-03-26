@@ -7,6 +7,7 @@ import "swiper/css";
 import "swiper/css/effect-fade";
 import "swiper/css/navigation";
 import EventCard from "../components/EventCard.jsx";
+import { useLocationStore, filterItemsByLocation } from "../store/location.jsx";
 import { useWishlist } from "../store/wishlist.jsx";
 import { getEvents } from "../utils/eventApi.js";
 
@@ -147,6 +148,7 @@ export const Home = () => {
   const [homeEvents, setHomeEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { selectedLocation } = useLocationStore();
   const { wishlistItems } = useWishlist();
 
   useEffect(() => {
@@ -180,7 +182,12 @@ export const Home = () => {
     };
   }, []);
 
-  const heroSlides = useMemo(() => homeEvents.slice(0, 3), [homeEvents]);
+  const locationEvents = useMemo(
+    () => filterItemsByLocation(homeEvents, selectedLocation),
+    [homeEvents, selectedLocation]
+  );
+
+  const heroSlides = useMemo(() => locationEvents.slice(0, 3), [locationEvents]);
 
   const recommendedItemsByType = useMemo(() => {
     const wishlistedTypes = [...new Set(wishlistItems.map((item) => item.contentType).filter(Boolean))];
@@ -190,28 +197,28 @@ export const Home = () => {
     ];
 
     return orderedTypes.reduce((accumulator, type) => {
-      accumulator[type] = homeEvents.filter((item) => item.contentType === type).slice(0, 8);
+      accumulator[type] = locationEvents.filter((item) => item.contentType === type).slice(0, 8);
       return accumulator;
     }, {});
-  }, [homeEvents, wishlistItems]);
+  }, [locationEvents, wishlistItems]);
 
   const recommendedMovies = recommendedItemsByType.movie || [];
   const recommendedEvents = recommendedItemsByType.event || [];
   const recommendedSports = recommendedItemsByType.sports || [];
 
   const popularEvents = useMemo(
-    () => homeEvents.filter((item) => item.contentType === "event").slice(0, 8),
-    [homeEvents]
+    () => locationEvents.filter((item) => item.contentType === "event").slice(0, 8),
+    [locationEvents]
   );
 
   const popularMovies = useMemo(
-    () => homeEvents.filter((item) => item.contentType === "movie").slice(0, 8),
-    [homeEvents]
+    () => locationEvents.filter((item) => item.contentType === "movie").slice(0, 8),
+    [locationEvents]
   );
 
   const topGamesAndSportsEvents = useMemo(
-    () => homeEvents.filter((item) => item.contentType === "sports").slice(0, 8),
-    [homeEvents]
+    () => locationEvents.filter((item) => item.contentType === "sports").slice(0, 8),
+    [locationEvents]
   );
 
   const hasSlides = heroSlides.length > 0;

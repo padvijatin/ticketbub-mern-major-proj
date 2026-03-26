@@ -1,11 +1,17 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ListingFilters } from "../components/ListingFilters.jsx";
 import { ListingGrid } from "../components/ListingGrid.jsx";
+import { filterItemsByLocation, useLocationStore } from "../store/location.jsx";
 import { getEvents } from "../utils/eventApi.js";
+import { filterListingItems, listingFilterConfigs } from "../utils/listingFilters.js";
 
 export const Sports = () => {
   const [sports, setSports] = useState([]);
+  const [activeFilters, setActiveFilters] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { selectedLocation } = useLocationStore();
+  const filterConfig = listingFilterConfigs.sports;
 
   useEffect(() => {
     let ignore = false;
@@ -38,6 +44,23 @@ export const Sports = () => {
     };
   }, []);
 
+  const locationSports = useMemo(
+    () => filterItemsByLocation(sports, selectedLocation),
+    [selectedLocation, sports]
+  );
+
+  const filteredSports = useMemo(
+    () => filterListingItems(locationSports, filterConfig, activeFilters),
+    [activeFilters, filterConfig, locationSports]
+  );
+
+  const handleToggleFilter = (key, value) => {
+    setActiveFilters((currentFilters) => ({
+      ...currentFilters,
+      [key]: currentFilters[key] === value ? "" : value,
+    }));
+  };
+
   return (
     <main className="py-[3rem]">
       <section className="mx-auto w-[min(132rem,calc(100%_-_3.2rem))]">
@@ -53,12 +76,20 @@ export const Sports = () => {
           </p>
         </div>
 
+        <ListingFilters
+          title={filterConfig.title}
+          groups={filterConfig.groups}
+          activeFilters={activeFilters}
+          onToggle={handleToggleFilter}
+          onReset={() => setActiveFilters({})}
+        />
+
         <ListingGrid
-          items={sports}
+          items={filteredSports}
           isLoading={isLoading}
           error={error}
           columnsClassName="sm:grid-cols-2 xl:grid-cols-4"
-          emptyMessage="No sports events match your database records yet."
+          emptyMessage="No sports events match these filters right now."
           skeletonCount={4}
           cardSize="listing"
         />
