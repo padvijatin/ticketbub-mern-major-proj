@@ -1,5 +1,11 @@
 const mongoose = require("mongoose");
 
+const stringArrayField = {
+  type: [String],
+  default: [],
+  set: (values = []) => values.map((value) => String(value).trim()).filter(Boolean),
+};
+
 const seatZoneSchema = new mongoose.Schema(
   {
     sectionGroup: {
@@ -17,7 +23,22 @@ const seatZoneSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    totalSeats: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     availableSeats: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    rows: {
+      type: [String],
+      default: [],
+      set: (values = []) => values.map((value) => String(value).trim().toUpperCase()).filter(Boolean),
+    },
+    seatsPerRow: {
       type: Number,
       default: 0,
       min: 0,
@@ -50,6 +71,10 @@ const eventSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    language: stringArrayField,
+    genres: stringArrayField,
+    format: stringArrayField,
+    tags: stringArrayField,
     venue: {
       type: String,
       required: true,
@@ -64,6 +89,11 @@ const eventSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    startTime: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     price: {
       type: Number,
       required: true,
@@ -72,6 +102,11 @@ const eventSchema = new mongoose.Schema(
     seatZones: {
       type: [seatZoneSchema],
       default: [],
+    },
+    bookedSeats: {
+      type: [String],
+      default: [],
+      set: (values = []) => [...new Set(values.map((value) => String(value).trim()).filter(Boolean))],
     },
     totalSeats: {
       type: Number,

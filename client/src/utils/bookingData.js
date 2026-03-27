@@ -1,10 +1,5 @@
-﻿const hashValue = (value = "") =>
-  Array.from(String(value)).reduce(
-    (total, character, index) => total + character.charCodeAt(0) * (index + 1),
-    0
-  );
+import { buildZoneSeatIds, getZoneBookedSeatIds } from "./seatLayout.js";
 
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const slugify = (value = "") =>
   value
     .toLowerCase()
@@ -91,49 +86,41 @@ const defaultZoneMetaByType = {
   ],
 };
 
-const theaterRowSets = [
-  ["A", "B"],
-  ["C", "D", "E"],
-  ["F", "G"],
-  ["H", "I"],
-];
-
-const stadiumPositions = [
-  { top: "8%", left: "31%", width: "38%", height: "15%" },
-  { top: "30%", right: "2%", width: "22%", height: "32%" },
-  { bottom: "8%", left: "31%", width: "38%", height: "15%" },
-  { top: "30%", left: "2%", width: "22%", height: "32%" },
-];
-
 const getZoneMeta = (event, zone, index) => {
   const contentType = event?.contentType === "event" ? "event" : event?.contentType || "event";
   const defaults = defaultZoneMetaByType[contentType] || defaultZoneMetaByType.event;
-  const match = defaults.find((item) => item.key === slugify(zone.name)) || defaults[index % defaults.length];
-  return match;
+  return defaults.find((item) => item.key === slugify(zone.name)) || defaults[index % defaults.length];
 };
 
 export const getEventSeatZones = (event = {}) => {
   const zones = Array.isArray(event.seatZones) ? event.seatZones : [];
+  const bookedSeats = Array.isArray(event.bookedSeats) ? event.bookedSeats : [];
 
-  if (zones.length) {
-    return zones.map((zone, index) => {
-      const meta = getZoneMeta(event, zone, index);
-      return {
-        id: slugify(zone.name) || `${event.contentType || "zone"}-${index + 1}`,
-        label: zone.name,
-        sectionGroup: zone.sectionGroup || "Tickets",
-        price: Number(zone.price) || 0,
-        availableSeats: Math.max(0, Number(zone.availableSeats) || 0),
-        currency: "Rs ",
-        colorClass: meta.colorClass,
-        description: meta.description,
-        perks: meta.perks,
-        section: meta.section,
-      };
-    });
-  }
+  return zones.map((zone, index) => {
+    const meta = getZoneMeta(event, zone, index);
+    const seatIds = buildZoneSeatIds(zone);
+    const bookedSeatIds = getZoneBookedSeatIds(zone, bookedSeats);
 
-  return [];
+    return {
+      id: slugify(zone.name) || `${event.contentType || "zone"}-${index + 1}`,
+      label: zone.name,
+      name: zone.name,
+      sectionGroup: zone.sectionGroup || "Tickets",
+      price: Number(zone.price) || 0,
+      rows: Array.isArray(zone.rows) ? zone.rows : [],
+      seatsPerRow: Math.max(0, Number(zone.seatsPerRow) || 0),
+      seatIds,
+      bookedSeatIds,
+      totalSeats: seatIds.length,
+      availableSeatIds: seatIds.filter((seatId) => !bookedSeatIds.includes(seatId)),
+      availableSeats: Math.max(0, seatIds.length - bookedSeatIds.length),
+      currency: "Rs ",
+      colorClass: meta.colorClass,
+      description: meta.description,
+      perks: meta.perks,
+      section: meta.section,
+    };
+  });
 };
 
 export const getBookingType = (event = {}) => {
@@ -148,83 +135,68 @@ export const getBookingType = (event = {}) => {
   return "experience";
 };
 
-export const buildSeatCategories = (event = {}) => {
-  return getEventSeatZones(event).map((zone, index) => ({
+export const buildSeatCategories = (event = {}) =>
+  getEventSeatZones(event).map((zone) => ({
     id: zone.id,
     label: zone.label,
     price: zone.price,
     availableSeats: zone.availableSeats,
     colorClass: zone.colorClass,
-    rows: theaterRowSets[index] || theaterRowSets[theaterRowSets.length - 1],
+    rows: zone.rows,
+    seatsPerRow: zone.seatsPerRow,
+    seatIds: zone.seatIds,
+    bookedSeatIds: zone.bookedSeatIds,
   }));
-};
 
 export const generateTheaterSeats = (event = {}) => {
   const categories = buildSeatCategories(event);
-  const eventSeed = hashValue(event.id || event.title || "tickethub");
-  const seats = [];
 
-  categories.forEach((category, categoryIndex) => {
-    const totalSeats = category.rows.length * 12;
-    const availableSeats = clamp(category.availableSeats || totalSeats, 0, totalSeats);
-    const bookedTarget = Math.max(0, totalSeats - availableSeats);
-    let bookedCount = 0;
+  return categories.flatMap((category) =>
+    category.seatIds.map((seatId) => {
+      const row = String(seatId).match(/^[A-Z]+/)?.[0] || "";
+      const number = Number(String(seatId).replace(/^[A-Z]+/, "")) || 0;
 
-    category.rows.forEach((row, rowIndex) => {
-      Array.from({ length: 12 }, (_, index) => {
-        const number = index + 1;
-        const seatSeed = eventSeed + categoryIndex * 31 + rowIndex * 17 + number * 13;
-        const shouldBook = bookedCount < bookedTarget && (seatSeed % 7 === 0 || seatSeed % 11 === 0);
-        const isBooked = shouldBook || bookedTarget - bookedCount >= totalSeats - (rowIndex * 12 + index + 1);
-
-        if (isBooked && bookedCount < bookedTarget) {
-          bookedCount += 1;
-        }
-
-        seats.push({
-          id: `${row}${number}`,
-          row,
-          number,
-          category: category.id,
-          price: category.price,
-          status: isBooked ? "booked" : "available",
-        });
-      });
-    });
-  });
-
-  return seats;
+      return {
+        id: seatId,
+        row,
+        number,
+        category: category.id,
+        price: category.price,
+        status: category.bookedSeatIds.includes(seatId) ? "booked" : "available",
+      };
+    })
+  );
 };
 
-export const generateStadiumZones = (event = {}) => {
-  return getEventSeatZones(event).map((zone, index) => {
-    const totalSeats = Math.max(zone.availableSeats + 80, 120);
-    return {
-      id: zone.id,
-      label: zone.label,
-      section: zone.section,
-      price: zone.price,
-      currency: zone.currency,
-      totalSeats,
-      bookedSeats: Math.max(0, totalSeats - zone.availableSeats),
-      position: stadiumPositions[index] || stadiumPositions[stadiumPositions.length - 1],
-    };
-  });
-};
+export const generateStadiumZones = (event = {}) =>
+  getEventSeatZones(event).map((zone, index) => ({
+    id: zone.id,
+    label: zone.label,
+    section: zone.section,
+    price: zone.price,
+    currency: zone.currency,
+    totalSeats: zone.totalSeats,
+    bookedSeats: zone.bookedSeatIds.length,
+    availableSeatIds: zone.availableSeatIds,
+    position:
+      [
+        { top: "8%", left: "31%", width: "38%", height: "15%" },
+        { top: "30%", right: "2%", width: "22%", height: "32%" },
+        { bottom: "8%", left: "31%", width: "38%", height: "15%" },
+        { top: "30%", left: "2%", width: "22%", height: "32%" },
+      ][index] || { top: "30%", left: "2%", width: "22%", height: "32%" },
+  }));
 
-export const generateExperienceZones = (event = {}) => {
-  return getEventSeatZones(event).map((zone) => {
-    const totalTickets = Math.max(zone.availableSeats + 40, 80);
-    return {
-      id: zone.id,
-      label: zone.label,
-      description: zone.description,
-      price: zone.price,
-      currency: zone.currency,
-      totalTickets,
-      soldTickets: Math.max(0, totalTickets - zone.availableSeats),
-      colorClass: zone.colorClass,
-      perks: zone.perks,
-    };
-  });
-};
+export const generateExperienceZones = (event = {}) =>
+  getEventSeatZones(event).map((zone) => ({
+    id: zone.id,
+    label: zone.label,
+    description: zone.description,
+    price: zone.price,
+    currency: zone.currency,
+    totalTickets: zone.totalSeats,
+    soldTickets: zone.bookedSeatIds.length,
+    availableTicketIds: zone.availableSeatIds,
+    colorClass: zone.colorClass,
+    perks: zone.perks,
+  }));

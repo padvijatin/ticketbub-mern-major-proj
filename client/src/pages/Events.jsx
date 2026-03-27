@@ -4,7 +4,7 @@ import { ListingGrid } from "../components/ListingGrid.jsx";
 import { PageHeroCarousel } from "../components/PageHeroCarousel.jsx";
 import { filterItemsByLocation, useLocationStore } from "../store/location.jsx";
 import { getEvents } from "../utils/eventApi.js";
-import { filterListingItems, listingFilterConfigs } from "../utils/listingFilters.js";
+import { buildEventFilterParams, listingFilterConfigs } from "../utils/listingFilters.js";
 
 export const Events = () => {
   const [events, setEvents] = useState([]);
@@ -22,7 +22,7 @@ export const Events = () => {
       setError("");
 
       try {
-        const eventData = await getEvents({ type: "event" });
+        const eventData = await getEvents(buildEventFilterParams("event", activeFilters));
 
         if (!ignore) {
           setEvents(eventData);
@@ -43,23 +43,26 @@ export const Events = () => {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [activeFilters]);
 
   const locationEvents = useMemo(
     () => filterItemsByLocation(events, selectedLocation),
     [events, selectedLocation]
   );
 
-  const filteredEvents = useMemo(
-    () => filterListingItems(locationEvents, filterConfig, activeFilters),
-    [activeFilters, filterConfig, locationEvents]
-  );
   const heroEvents = useMemo(() => locationEvents.slice(0, 3), [locationEvents]);
 
   const handleToggleFilter = (key, value) => {
     setActiveFilters((currentFilters) => ({
       ...currentFilters,
-      [key]: currentFilters[key] === value ? "" : value,
+      [key]:
+        key === "category"
+          ? currentFilters[key]?.includes(value)
+            ? []
+            : [value]
+          : currentFilters[key]?.includes(value)
+            ? currentFilters[key].filter((item) => item !== value)
+            : [...(currentFilters[key] || []), value],
     }));
   };
 
@@ -89,7 +92,7 @@ export const Events = () => {
         />
 
         <ListingGrid
-          items={filteredEvents}
+          items={locationEvents}
           isLoading={isLoading}
           error={error}
           columnsClassName="sm:grid-cols-2 xl:grid-cols-4"

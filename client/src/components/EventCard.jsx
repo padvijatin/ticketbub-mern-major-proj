@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Heart, MapPin, Star } from "lucide-react";
+import { CalendarDays, Heart, MapPin } from "lucide-react";
+import { Rating } from "./Rating.jsx";
 import { useWishlist } from "../store/wishlist.jsx";
 
 const routeByType = {
@@ -79,35 +80,6 @@ const getCategoryLabel = (event) => {
   return "Live Event";
 };
 
-const getStableRating = (event) => {
-  if (typeof event.rating === "number" && event.rating > 0) {
-    return Math.min(5, Math.max(0, Number(event.rating.toFixed(1))));
-  }
-
-  const seedSource = `${event.id || event._id || ""}${event.title || ""}${event.category || ""}`;
-  const seedValue = Array.from(seedSource).reduce(
-    (total, character, index) => total + character.charCodeAt(0) * (index + 1),
-    0
-  );
-
-  const generatedRating = 3.8 + (seedValue % 12) / 10;
-  return Number(Math.min(4.9, generatedRating).toFixed(1));
-};
-
-const StarRating = ({ rating, compact = false }) => {
-  const starClassName = compact ? "h-[1.45rem] w-[1.45rem]" : "h-[1.8rem] w-[1.8rem]";
-  const ratingClassName = compact ? "text-[1.3rem]" : "text-[1.5rem]";
-
-  return (
-    <div className="flex items-center gap-[0.6rem]">
-      <Star className={`${starClassName} fill-[#f59e0b] text-[#f59e0b]`} />
-      <span className={`${ratingClassName} font-bold text-[var(--color-text-primary)]`}>
-        {rating.toFixed(1)}
-      </span>
-    </div>
-  );
-};
-
 const EventCardSkeleton = ({ size = "default" }) => {
   const isListing = size === "listing";
   const mediaAspectClassName = isListing ? "aspect-[5/6]" : "aspect-[16/10]";
@@ -156,7 +128,8 @@ const EventCard = ({ event = {}, isLoading = false, size = "default" }) => {
   const date = formatDate(event.date);
   const price = formatPrice(event.price);
   const category = getCategoryLabel(event);
-  const rating = getStableRating(event);
+  const averageRating = Number(event.averageRating || 0);
+  const totalRatings = Number(event.totalRatings || 0);
   const destination = event.id ? `/event/${event.id}` : event.to || routeByType[event.contentType] || "/events";
   const fallbackClassName = fallbackByType[event.contentType] || fallbackByType.event;
 
@@ -217,7 +190,7 @@ const EventCard = ({ event = {}, isLoading = false, size = "default" }) => {
           </h3>
 
           <div className="mt-[1.1rem]">
-            <StarRating rating={rating} compact />
+            <Rating value={averageRating} totalRatings={totalRatings} size="sm" />
           </div>
 
           <div className="mt-[1rem] grid gap-[0.8rem] text-[1.3rem] text-[var(--color-text-secondary)]">

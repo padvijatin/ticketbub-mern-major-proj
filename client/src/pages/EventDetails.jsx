@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
   ChevronLeft,
@@ -9,11 +9,12 @@ import {
   Info,
   MapPin,
   Share2,
-  Star,
   Users,
 } from "lucide-react";
+import { Rating } from "../components/Rating.jsx";
+import { useAuth } from "../store/auth.jsx";
 import { useWishlist } from "../store/wishlist.jsx";
-import { getEventById, getEvents } from "../utils/eventApi.js";
+import { getEventById, getEvents, rateEvent } from "../utils/eventApi.js";
 
 const formatDate = (value) => {
   const parsedDate = new Date(value);
@@ -30,10 +31,14 @@ const formatDate = (value) => {
 };
 
 const formatTime = (value) => {
+  if (typeof value === "string" && /am|pm/i.test(value)) {
+    return value;
+  }
+
   const parsedDate = new Date(value);
 
   if (Number.isNaN(parsedDate.getTime())) {
-    return "8:30 PM";
+    return "Time to be announced";
   }
 
   return parsedDate.toLocaleTimeString("en-IN", {
@@ -44,24 +49,6 @@ const formatTime = (value) => {
 };
 
 const formatCurrency = (value) => `Rs ${Number(value || 0).toLocaleString("en-IN")}`;
-
-const getStableRating = (event = {}) => {
-  const seedSource = `${event.id || ""}${event.title || ""}${event.category || ""}`;
-  const seedValue = Array.from(seedSource).reduce(
-    (total, character, index) => total + character.charCodeAt(0) * (index + 1),
-    0
-  );
-  return Number((4 + (seedValue % 9) / 10).toFixed(1));
-};
-
-const getInterestedCount = (event = {}) => {
-  const seedSource = `${event.id || ""}${event.title || ""}`;
-  const seedValue = Array.from(seedSource).reduce(
-    (total, character, index) => total + character.charCodeAt(0) * (index + 3),
-    0
-  );
-  return 1800 + (seedValue % 4200);
-};
 
 const infoChipClassName =
   "inline-flex items-center gap-[0.8rem] rounded-full border border-[rgba(28,28,28,0.08)] bg-white px-[1.3rem] py-[0.95rem] text-[1.35rem] text-[var(--color-text-primary)] shadow-[0_10px_24px_rgba(28,28,28,0.04)]";
@@ -97,7 +84,10 @@ const groupSeatZones = (seatZones = []) => {
 
 export const EventDetails = () => {
   const { id } = useParams();
+  const queryClient = useQueryClient();
+  const { authorizationToken, isLoggedIn } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const [userRating, setUserRating] = useState(0);
   const { data: event, isLoading, isError } = useQuery({
     queryKey: ["event", id],
     queryFn: () => getEventById(id),
@@ -109,12 +99,76 @@ export const EventDetails = () => {
     enabled: Boolean(event?.contentType),
   });
 
-  const rating = useMemo(() => getStableRating(event), [event]);
-  const interestedCount = useMemo(() => getInterestedCount(event), [event]);
   const suggestedEvent = useMemo(
     () => relatedEvents.find((item) => item.id !== event?.id) || null,
     [event?.id, relatedEvents]
   );
+  const displayedRating = userRating || Number(event?.averageRating || 0);
+  const displayedTotalRatings = Number(event?.totalRatings || 0);
+  const interestedCount = Number(event?.interestedCount || 0);
+
+  const ratingMutation = useMutation({
+    mutationFn: (value) =>
+      rateEvent({
+        eventId: id,
+        value,
+        authorizationToken,
+      }),
+    onMutate: async (value) => {
+      await queryClient.cancelQueries({ queryKey: ["event", id] });
+      const previousEvent = queryClient.getQueryData(["event", id]);
+
+      queryClient.setQueryData(["event", id], (currentEvent) => {
+        if (!currentEvent) {
+          return currentEvent;
+        }
+
+        const currentAverage = Number(currentEvent.averageRating || 0);
+        const currentTotal = Number(currentEvent.totalRatings || 0);
+        const previousUserRating = userRating;
+        const nextTotal = previousUserRating ? currentTotal : currentTotal + 1;
+        const nextAverage =
+          nextTotal > 0
+            ? Number(
+                (
+                  (currentAverage * currentTotal - previousUserRating + value) /
+                  nextTotal
+                ).toFixed(1)
+              )
+            : value;
+
+        return {
+          ...currentEvent,
+          averageRating: nextAverage,
+          totalRatings: nextTotal,
+        };
+      });
+
+      setUserRating(value);
+
+      return { previousEvent, previousUserRating: userRating };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previousEvent) {
+        queryClient.setQueryData(["event", id], context.previousEvent);
+      }
+
+      setUserRating(context?.previousUserRating || 0);
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["event", id], (currentEvent) =>
+        currentEvent
+          ? {
+              ...currentEvent,
+              averageRating: data.averageRating,
+              totalRatings: data.totalRatings,
+            }
+          : currentEvent
+      );
+
+      setUserRating(data.userRating || 0);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -138,7 +192,7 @@ export const EventDetails = () => {
 
   const isLiked = isWishlisted(event);
   const eventDate = formatDate(event.date);
-  const eventTime = formatTime(event.date);
+  const eventTime = formatTime(event.startTime || event.date);
   const eventPrice = formatCurrency(event.price);
   const aboutParagraphs = getAboutParagraphs(event, eventDate, eventTime);
   const zoneGroups = groupSeatZones(event.seatZones || []);
@@ -215,14 +269,35 @@ export const EventDetails = () => {
                 {event.venue}, {event.city}
               </span>
               <span className={infoChipClassName}>
-                <Star className="h-[1.7rem] w-[1.7rem] fill-[#f59e0b] text-[#f59e0b]" />
-                {rating} / 5
+                <span className="text-[#f59e0b]">★</span>
+                {displayedRating.toFixed(1)} ({displayedTotalRatings} ratings)
               </span>
               <span className={infoChipClassName}>
                 <Users className="h-[1.7rem] w-[1.7rem] text-[var(--color-primary)]" />
                 {interestedCount.toLocaleString("en-IN")} interested
               </span>
             </div>
+
+            <section className="rounded-[2.4rem] border border-[rgba(28,28,28,0.06)] bg-white p-[2rem] shadow-[var(--shadow-soft)]">
+              <div className="flex flex-wrap items-center justify-between gap-[1rem]">
+                <h2 className="text-[2rem] font-extrabold tracking-[-0.03em] text-[var(--color-text-primary)]">
+                  Rate this Event
+                </h2>
+                {!isLoggedIn ? (
+                  <p className="text-[1.3rem] text-[var(--color-text-secondary)]">
+                    Login to submit your rating
+                  </p>
+                ) : null}
+              </div>
+              <div className="mt-[1.4rem]">
+                <Rating
+                  value={displayedRating}
+                  totalRatings={displayedTotalRatings}
+                  onRate={isLoggedIn ? (value) => ratingMutation.mutate(value) : undefined}
+                  disabled={ratingMutation.isPending}
+                />
+              </div>
+            </section>
 
             <section className="rounded-[2.4rem] border border-[rgba(28,28,28,0.06)] bg-white p-[2rem] shadow-[var(--shadow-soft)]">
               <h2 className="flex items-center gap-[0.8rem] text-[2rem] font-extrabold tracking-[-0.03em] text-[var(--color-text-primary)]">

@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookingSummary } from "./BookingSummary.jsx";
 import { buildSeatCategories, generateTheaterSeats } from "../../utils/bookingData.js";
 
@@ -37,14 +37,33 @@ const SeatButton = ({ seat, onToggle }) => {
   );
 };
 
+const syncSeatsWithEvent = (event, previousSeats = []) => {
+  const nextSeats = generateTheaterSeats(event);
+  const previouslySelectedIds = new Set(
+    previousSeats.filter((seat) => seat.status === "selected").map((seat) => seat.id)
+  );
+
+  return nextSeats.map((seat) =>
+    previouslySelectedIds.has(seat.id) && seat.status !== "booked"
+      ? { ...seat, status: "selected" }
+      : seat
+  );
+};
+
 export const TheaterLayout = ({ event }) => {
   const categories = useMemo(() => buildSeatCategories(event), [event]);
   const [seats, setSeats] = useState(() => generateTheaterSeats(event));
   const selectedSeats = useMemo(() => seats.filter((seat) => seat.status === "selected"), [seats]);
 
+  useEffect(() => {
+    setSeats((currentSeats) => syncSeatsWithEvent(event, currentSeats));
+  }, [event]);
+
   const toggleSeat = (seatId) => {
-    setSeats((currentSeats) =>
-      currentSeats.map((seat) => {
+    setSeats((currentSeats) => {
+      const selectedCount = currentSeats.filter((seat) => seat.status === "selected").length;
+
+      return currentSeats.map((seat) => {
         if (seat.id !== seatId || seat.status === "booked") {
           return seat;
         }
@@ -53,13 +72,13 @@ export const TheaterLayout = ({ event }) => {
           return { ...seat, status: "available" };
         }
 
-        if (selectedSeats.length >= MAX_SEATS) {
+        if (selectedCount >= MAX_SEATS) {
           return seat;
         }
 
         return { ...seat, status: "selected" };
-      })
-    );
+      });
+    });
   };
 
   const clearSelection = () => {
@@ -126,32 +145,42 @@ export const TheaterLayout = ({ event }) => {
         </div>
 
         <div className="mt-[2.4rem] space-y-[1.6rem] overflow-x-auto">
-          {categories.map((category) => (
-            <div key={category.id} className="space-y-[0.8rem]">
-              <p className="text-[1.15rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
-                {category.label}
-              </p>
-              {category.rows.map((row) => {
-                const rowSeats = seats.filter((seat) => seat.row === row);
+          {categories.map((category) => {
+            const categorySeats = seats.filter((seat) => seat.category === category.id);
+            const availableSeats = categorySeats.filter((seat) => seat.status !== "booked").length;
 
-                return (
-                  <div key={row} className="flex items-center justify-center gap-[0.8rem]">
-                    <span className="w-[2rem] text-right text-[1rem] font-bold text-[var(--color-text-secondary)]">
-                      {row}
-                    </span>
-                    <div className="flex flex-wrap justify-center gap-[0.45rem]">
-                      {rowSeats.map((seat) => (
-                        <SeatButton key={seat.id} seat={seat} onToggle={toggleSeat} />
-                      ))}
+            return (
+              <div key={category.id} className="space-y-[0.8rem]">
+                <div className="flex flex-wrap items-center justify-between gap-[0.8rem]">
+                  <p className="text-[1.15rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
+                    {category.label}
+                  </p>
+                  <p className="text-[1.15rem] font-semibold text-[var(--color-text-secondary)]">
+                    {availableSeats > 0 ? `${availableSeats} seats left` : "Sold out"}
+                  </p>
+                </div>
+                {category.rows.map((row) => {
+                  const rowSeats = seats.filter((seat) => seat.row === row);
+
+                  return (
+                    <div key={row} className="flex items-center justify-center gap-[0.8rem]">
+                      <span className="w-[2rem] text-right text-[1rem] font-bold text-[var(--color-text-secondary)]">
+                        {row}
+                      </span>
+                      <div className="flex flex-wrap justify-center gap-[0.45rem]">
+                        {rowSeats.map((seat) => (
+                          <SeatButton key={seat.id} seat={seat} onToggle={toggleSeat} />
+                        ))}
+                      </div>
+                      <span className="w-[2rem] text-[1rem] font-bold text-[var(--color-text-secondary)]">
+                        {row}
+                      </span>
                     </div>
-                    <span className="w-[2rem] text-[1rem] font-bold text-[var(--color-text-secondary)]">
-                      {row}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </section>
 

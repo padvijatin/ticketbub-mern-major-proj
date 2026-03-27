@@ -1,4 +1,5 @@
-﻿import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { TheaterLayout } from "../components/booking/TheaterLayout.jsx";
@@ -15,13 +16,24 @@ const layoutLabels = {
 
 export const SeatSelection = () => {
   const { id } = useParams();
-  const { data: event, isLoading, isError } = useQuery({
+  const [event, setEvent] = useState(null);
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["event", id],
     queryFn: () => getEventById(id),
     enabled: Boolean(id),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
-  if (isLoading) {
+  useEffect(() => {
+    if (data) {
+      setEvent(data);
+    }
+  }, [data]);
+
+  if (isLoading && !event) {
     return (
       <main className="py-[3rem]">
         <section className="mx-auto w-[min(120rem,calc(100%_-_3.2rem))] rounded-[2.8rem] border border-[rgba(28,28,28,0.08)] bg-white p-[2rem] shadow-[var(--shadow-soft)]">
@@ -31,7 +43,7 @@ export const SeatSelection = () => {
     );
   }
 
-  if (isError || !event) {
+  if ((isError && !event) || !event) {
     return (
       <main className="py-[3rem]">
         <section className="mx-auto w-[min(80rem,calc(100%_-_3.2rem))] rounded-[2.4rem] border border-[rgba(248,68,100,0.14)] bg-[rgba(248,68,100,0.05)] px-[1.8rem] py-[1.6rem] text-[1.5rem] text-[var(--color-text-secondary)]">
@@ -62,6 +74,9 @@ export const SeatSelection = () => {
             </h1>
             <p className="mt-[0.8rem] text-[1.5rem] leading-[1.7] text-[var(--color-text-secondary)]">
               {event.venue}, {event.city}
+            </p>
+            <p className="mt-[0.45rem] text-[1.2rem] text-[var(--color-text-secondary)]">
+              Live availability sync every 5 seconds
             </p>
           </div>
         </div>

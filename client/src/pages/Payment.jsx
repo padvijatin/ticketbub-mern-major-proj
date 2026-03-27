@@ -1,6 +1,6 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   CheckCircle,
@@ -12,7 +12,8 @@ import {
   Tag,
 } from "lucide-react";
 import { FaCcVisa, FaWallet } from "react-icons/fa";
-import { getEventById } from "../utils/eventApi.js";
+import { toast } from "react-toastify";
+import { bookEvent, getEventById } from "../utils/eventApi.js";
 
 const PaymentBrandStrip = ({ type, isActive }) => {
   const brandClassName = isActive
@@ -74,6 +75,7 @@ export const Payment = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const bookingState = location.state || {};
   const selectedItems = bookingState.items || [];
   const summary = bookingState.summary || [];
@@ -84,7 +86,6 @@ export const Payment = () => {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState("");
   const [selectedMethod, setSelectedMethod] = useState("upi");
-  const [processing, setProcessing] = useState(false);
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", id],
     queryFn: () => getEventById(id),
@@ -109,6 +110,31 @@ export const Payment = () => {
   const gst = Math.round((subtotal - discount) * 0.18 * 0.02);
   const total = subtotal - discount + convenienceFee + gst;
 
+  const bookingMutation = useMutation({
+    mutationFn: () => bookEvent({ eventId: id, seats: selectedItems }),
+    onSuccess: (response) => {
+      queryClient.setQueryData(["event", id], response.event);
+      queryClient.invalidateQueries({ queryKey: ["event", id] });
+      queryClient.invalidateQueries({ queryKey: ["related-events"] });
+      toast.success(response.message || "Booking confirmed");
+      navigate(`/event/${id}/confirmation`, {
+        state: {
+          items: response.bookedSeats || selectedItems,
+          summary,
+          subtotal,
+          total,
+          currency,
+          bookingMeta,
+          paymentMethod: selectedMethod,
+        },
+      });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Unable to complete booking right now");
+      queryClient.invalidateQueries({ queryKey: ["event", id] });
+    },
+  });
+
   const applyCoupon = () => {
     const normalizedCode = couponCode.trim().toUpperCase();
 
@@ -129,21 +155,7 @@ export const Payment = () => {
   };
 
   const handlePayment = () => {
-    setProcessing(true);
-
-    window.setTimeout(() => {
-      navigate(`/event/${id}/confirmation`, {
-        state: {
-          items: selectedItems,
-          summary,
-          subtotal,
-          total,
-          currency,
-          bookingMeta,
-          paymentMethod: selectedMethod,
-        },
-      });
-    }, 1400);
+    bookingMutation.mutate();
   };
 
   if (!selectedItems.length) {
@@ -202,11 +214,7 @@ export const Payment = () => {
                       <p className="text-[1.2rem] text-[var(--color-text-secondary)]">{coupons[appliedCoupon].label}</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={removeCoupon}
-                    className="text-[1.2rem] font-bold text-[var(--color-primary)]"
-                  >
+                  <button type="button" onClick={removeCoupon} className="text-[1.2rem] font-bold text-[var(--color-primary)]">
                     Remove
                   </button>
                 </div>
@@ -232,9 +240,7 @@ export const Payment = () => {
                 </div>
               )}
 
-              {couponError ? (
-                <p className="mt-[0.9rem] text-[1.2rem] text-[#dc2626]">{couponError}</p>
-              ) : null}
+              {couponError ? <p className="mt-[0.9rem] text-[1.2rem] text-[#dc2626]">{couponError}</p> : null}
 
               <div className="mt-[1.2rem] flex flex-wrap gap-[0.8rem]">
                 {Object.entries(coupons).map(([code, info]) => (
@@ -322,18 +328,10 @@ export const Payment = () => {
 
             {event ? (
               <div className="mt-[1.4rem] flex gap-[1rem]">
-                <img
-                  src={event.poster || "/fallback.jpg"}
-                  alt={event.title}
-                  className="h-[7rem] w-[7rem] rounded-[1.2rem] object-cover"
-                />
+                <img src={event.poster || "/fallback.jpg"} alt={event.title} className="h-[7rem] w-[7rem] rounded-[1.2rem] object-cover" />
                 <div className="min-w-0">
-                  <p className="line-clamp-1 text-[1.45rem] font-bold text-[var(--color-text-primary)]">
-                    {event.title}
-                  </p>
-                  <p className="mt-[0.35rem] text-[1.15rem] text-[var(--color-text-secondary)]">
-                    {event.venue}
-                  </p>
+                  <p className="line-clamp-1 text-[1.45rem] font-bold text-[var(--color-text-primary)]">{event.title}</p>
+                  <p className="mt-[0.35rem] text-[1.15rem] text-[var(--color-text-secondary)]">{event.venue}</p>
                 </div>
               </div>
             ) : null}
@@ -401,10 +399,10 @@ export const Payment = () => {
             <button
               type="button"
               onClick={handlePayment}
-              disabled={processing || !selectedItems.length}
+              disabled={bookingMutation.isPending || !selectedItems.length}
               className="mt-[1.6rem] inline-flex h-[4.8rem] w-full items-center justify-center rounded-[1.4rem] bg-[var(--color-primary)] text-[1.5rem] font-bold text-[var(--color-text-light)] transition-colors duration-200 hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {processing ? "Processing..." : `Pay ${currency}${total.toLocaleString("en-IN")}`}
+              {bookingMutation.isPending ? "Processing..." : `Pay ${currency}${total.toLocaleString("en-IN")}`}
             </button>
           </aside>
         </div>

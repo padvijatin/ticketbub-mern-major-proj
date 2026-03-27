@@ -27,7 +27,8 @@ export const ListingFilters = ({ title, groups, activeFilters, onToggle, onReset
             </p>
             <div className="mt-[0.8rem] flex flex-wrap gap-[0.7rem]">
               {group.options.map((option) => {
-                const isActive = activeFilters[group.key] === option;
+                const values = activeFilters[group.key] || [];
+                const isActive = values.includes(option);
 
                 return (
                   <button

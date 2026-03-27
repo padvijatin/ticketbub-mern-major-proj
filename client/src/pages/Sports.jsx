@@ -4,7 +4,7 @@ import { ListingGrid } from "../components/ListingGrid.jsx";
 import { PageHeroCarousel } from "../components/PageHeroCarousel.jsx";
 import { filterItemsByLocation, useLocationStore } from "../store/location.jsx";
 import { getEvents } from "../utils/eventApi.js";
-import { filterListingItems, listingFilterConfigs } from "../utils/listingFilters.js";
+import { buildEventFilterParams, listingFilterConfigs } from "../utils/listingFilters.js";
 
 export const Sports = () => {
   const [sports, setSports] = useState([]);
@@ -22,7 +22,7 @@ export const Sports = () => {
       setError("");
 
       try {
-        const sportsData = await getEvents({ type: "sports" });
+        const sportsData = await getEvents(buildEventFilterParams("sports", activeFilters));
 
         if (!ignore) {
           setSports(sportsData);
@@ -43,23 +43,21 @@ export const Sports = () => {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [activeFilters]);
 
   const locationSports = useMemo(
     () => filterItemsByLocation(sports, selectedLocation),
     [selectedLocation, sports]
   );
 
-  const filteredSports = useMemo(
-    () => filterListingItems(locationSports, filterConfig, activeFilters),
-    [activeFilters, filterConfig, locationSports]
-  );
   const heroSports = useMemo(() => locationSports.slice(0, 3), [locationSports]);
 
   const handleToggleFilter = (key, value) => {
     setActiveFilters((currentFilters) => ({
       ...currentFilters,
-      [key]: currentFilters[key] === value ? "" : value,
+      [key]: currentFilters[key]?.includes(value)
+        ? currentFilters[key].filter((item) => item !== value)
+        : [...(currentFilters[key] || []), value],
     }));
   };
 
@@ -89,7 +87,7 @@ export const Sports = () => {
         />
 
         <ListingGrid
-          items={filteredSports}
+          items={locationSports}
           isLoading={isLoading}
           error={error}
           columnsClassName="sm:grid-cols-2 xl:grid-cols-4"
