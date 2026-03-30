@@ -1,6 +1,12 @@
 export const listingFilterConfigs = {
   movie: {
     title: "Browse Movies",
+    quickOptions: [
+      { key: "language", value: "Tamil" },
+      { key: "language", value: "Malayalam" },
+      { key: "date", value: "Upcoming" },
+      { key: "format", value: "3D" },
+    ],
     groups: [
       {
         key: "language",
@@ -31,6 +37,12 @@ export const listingFilterConfigs = {
   },
   sports: {
     title: "Browse Sports",
+    quickOptions: [
+      { key: "tags", value: "IPL" },
+      { key: "tags", value: "T20" },
+      { key: "date", value: "This Weekend" },
+      { key: "price", value: "Premium" },
+    ],
     groups: [
       {
         key: "tags",
@@ -51,6 +63,12 @@ export const listingFilterConfigs = {
   },
   event: {
     title: "Browse Events",
+    quickOptions: [
+      { key: "category", value: "Comedy" },
+      { key: "category", value: "Concert" },
+      { key: "date", value: "This Weekend" },
+      { key: "price", value: "Under Rs 500" },
+    ],
     groups: [
       {
         key: "category",

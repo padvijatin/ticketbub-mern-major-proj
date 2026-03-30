@@ -81,6 +81,7 @@ export const Movies = () => {
         <ListingFilters
           title={filterConfig.title}
           groups={filterConfig.groups}
+          quickOptions={filterConfig.quickOptions}
           activeFilters={activeFilters}
           onToggle={handleToggleFilter}
           onReset={() => setActiveFilters({})}

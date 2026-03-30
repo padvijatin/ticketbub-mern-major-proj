@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../store/auth.jsx";
@@ -18,7 +18,7 @@ const getAuthErrorMessage = (error, fallbackMessage) =>
 export const Register = () => {
   const [user, setUser] = useState(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { registerUser } = useAuth();
+  const { isLoading, isLoggedIn, registerUser } = useAuth();
   const navigate = useNavigate();
   const pageClassName =
     "min-h-[calc(100vh-15rem)] bg-[radial-gradient(circle_at_top_left,_rgba(248,68,100,0.12),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(123,63,228,0.14),_transparent_26%),linear-gradient(180deg,_#fff8fa_0%,_#f5f5f5_100%)] py-[5.6rem] max-[640px]:py-[3.2rem]";
@@ -32,6 +32,15 @@ export const Register = () => {
     "w-full rounded-[1.4rem] border border-[rgba(28,28,28,0.14)] bg-white px-[1.4rem] py-[1.35rem] text-[1.5rem] text-[var(--color-text-primary)] outline-none transition-[border-color,box-shadow,transform] duration-200 placeholder:text-[#9ca3af] focus:border-[rgba(248,68,100,0.65)] focus:shadow-[0_0_0_0.4rem_rgba(248,68,100,0.12)] focus:-translate-y-px";
   const submitClassName =
     "mt-[0.4rem] w-full rounded-[1.4rem] bg-[var(--color-primary)] px-[1.8rem] py-[1.35rem] text-[1.6rem] font-extrabold text-[var(--color-text-light)] transition-[transform,box-shadow,background] duration-200 hover:bg-[var(--color-primary-hover)] enabled:hover:-translate-y-px enabled:hover:shadow-[0_16px_28px_rgba(248,68,100,0.22)] disabled:cursor-wait disabled:opacity-80";
+
+  useEffect(() => {
+    if (isLoading || !isLoggedIn) {
+      return;
+    }
+
+    toast.info("You are already logged in.");
+    navigate("/", { replace: true });
+  }, [isLoading, isLoggedIn, navigate]);
 
   const handleInput = (event) => {
     const { name, value } = event.target;
