@@ -4,6 +4,12 @@ const Coupon = require("../models/coupon-model");
 const QRCode = require("qrcode");
 const { validateCouponForAmount } = require("../services/coupon-service");
 const { buildCheckoutPricing } = require("../services/pricing-service");
+const {
+  assertSeatsLockedByUser,
+  emitSeatBooked,
+  getSeatLockSnapshot,
+  releaseSeats,
+} = require("../services/seat-lock-service");
 const { buildZoneSeatIds } = require("../utils/seat-layout");
 const { serializeEvent, syncEventSeatState } = require("./event-controller");
 
@@ -165,6 +171,13 @@ const validatePaymentDetails = (paymentMethod, paymentDetails = {}) => {
   return "Unsupported payment method";
 };
 
+const createHttpError = (statusCode, message, extra = {}) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  Object.assign(error, extra);
+  return error;
+};
+
 const createBooking = async (req, res) => {
   let reservedSeats = [];
   let reservedEventId = null;
@@ -184,13 +197,13 @@ const createBooking = async (req, res) => {
     const paymentValidationMessage = validatePaymentDetails(paymentMethod, paymentDetails);
 
     if (paymentValidationMessage) {
-      return res.status(400).json({ message: paymentValidationMessage });
+      throw createHttpError(400, paymentValidationMessage);
     }
 
     const event = await Event.findById(req.body.eventId);
 
     if (!event || !event.isActive || event.status !== "approved") {
-      return res.status(404).json({ message: "Event not found" });
+      throw createHttpError(404, "Event not found");
     }
 
     const normalizedState = syncEventSeatState(event);
@@ -198,19 +211,31 @@ const createBooking = async (req, res) => {
     const invalidSeats = requestedSeats.filter((seat) => !validSeatIds.has(seat));
 
     if (invalidSeats.length) {
-      return res.status(400).json({ message: "Some selected seats are invalid", invalidSeats });
+      throw createHttpError(400, "Some selected seats are invalid", { invalidSeats });
     }
 
     const alreadyBookedSeats = requestedSeats.filter((seat) => normalizedState.bookedSeats.includes(seat));
 
     if (alreadyBookedSeats.length) {
-      return res.status(409).json({ message: "Some selected seats are already booked", seats: alreadyBookedSeats });
+      throw createHttpError(409, "Some selected seats are already booked", { seats: alreadyBookedSeats });
+    }
+
+    const lockOwnership = assertSeatsLockedByUser({
+      eventId: event._id.toString(),
+      seatIds: requestedSeats,
+      userId: req.user._id.toString(),
+    });
+
+    if (!lockOwnership.ok) {
+      throw createHttpError(409, "Your seat lock expired. Please reselect your seats.", {
+        seats: [...lockOwnership.missingSeats, ...lockOwnership.conflictingSeats],
+      });
     }
 
     const pricingSummary = getBookingPricingSummary(requestedSeats, normalizedState.seatZones);
 
     if (!pricingSummary.summary.length || pricingSummary.cartAmount <= 0) {
-      return res.status(400).json({ message: "Unable to calculate booking amount for the selected seats" });
+      throw createHttpError(400, "Unable to calculate booking amount for the selected seats");
     }
 
     let pricing = buildCheckoutPricing({
@@ -226,8 +251,7 @@ const createBooking = async (req, res) => {
       });
 
       if (!couponValidation.valid) {
-        return res.status(400).json({
-          message: couponValidation.message,
+        throw createHttpError(400, couponValidation.message, {
           valid: false,
           discountAmount: couponValidation.pricing.discountAmount,
           finalAmount: couponValidation.pricing.finalAmount,
@@ -258,12 +282,15 @@ const createBooking = async (req, res) => {
       const latestBookedSeats = latestEvent ? syncEventSeatState(latestEvent).bookedSeats : [];
       const conflictingSeats = requestedSeats.filter((seat) => latestBookedSeats.includes(seat));
 
-      return res.status(409).json({
-        message: conflictingSeats.length
+      throw createHttpError(
+        409,
+        conflictingSeats.length
           ? "Some selected seats are already booked"
           : "These seats were just booked by someone else. Please choose different seats.",
-        seats: conflictingSeats,
-      });
+        {
+          seats: conflictingSeats,
+        }
+      );
     }
 
     reservedSeats = requestedSeats;
@@ -313,12 +340,30 @@ const createBooking = async (req, res) => {
       await Coupon.updateOne({ _id: validatedCoupon._id }, { $inc: { usedCount: 1 } });
     }
 
+    releaseSeats({
+      eventId: reservedEvent._id.toString(),
+      seatIds: requestedSeats,
+      userId: req.user._id.toString(),
+      reason: "booked",
+      broadcast: false,
+    });
+
+    requestedSeats.forEach((seatId) => {
+      emitSeatBooked({
+        eventId: reservedEvent._id.toString(),
+        seatId,
+        userId: req.user._id.toString(),
+      });
+    });
+
+    const seatLocks = getSeatLockSnapshot(reservedEvent._id.toString(), req.user._id.toString());
+
     return res.status(200).json({
       message: "Seats booked successfully",
       bookedSeats: requestedSeats,
       totalSeats: reservedEvent.totalSeats,
       availableSeats: reservedEvent.availableSeats,
-      event: serializeEvent(reservedEvent.toObject()),
+      event: serializeEvent(reservedEvent.toObject(), {}, {}, seatLocks),
       booking: {
         id: booking._id.toString(),
         bookingId: booking.bookingId,
@@ -357,6 +402,17 @@ const createBooking = async (req, res) => {
 
     if (error?.name === "VersionError") {
       return res.status(409).json({ message: "These seats were just booked by someone else. Please choose different seats." });
+    }
+
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({
+        message: error.message,
+        seats: error.seats || [],
+        invalidSeats: error.invalidSeats || [],
+        valid: error.valid,
+        discountAmount: error.discountAmount,
+        finalAmount: error.finalAmount,
+      });
     }
 
     return res.status(500).json({ message: "Unable to complete booking right now" });

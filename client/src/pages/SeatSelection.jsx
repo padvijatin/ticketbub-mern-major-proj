@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { TheaterLayout } from "../components/booking/TheaterLayout.jsx";
 import { StadiumLayout } from "../components/booking/StadiumLayout.jsx";
 import { ExperienceLayout } from "../components/booking/ExperienceLayout.jsx";
+import { useAuth } from "../store/auth.jsx";
 import { getBookingType } from "../utils/bookingData.js";
 import { getEventById } from "../utils/eventApi.js";
 
@@ -16,13 +17,12 @@ const layoutLabels = {
 
 export const SeatSelection = () => {
   const { id } = useParams();
+  const { authorizationToken } = useAuth();
   const [event, setEvent] = useState(null);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["event", id],
-    queryFn: () => getEventById(id),
+    queryKey: ["event", id, authorizationToken],
+    queryFn: () => getEventById(id, authorizationToken),
     enabled: Boolean(id),
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
@@ -76,7 +76,7 @@ export const SeatSelection = () => {
               {event.venue}, {event.city}
             </p>
             <p className="mt-[0.45rem] text-[1.2rem] text-[var(--color-text-secondary)]">
-              Live availability sync every 5 seconds
+              Live seat locks update instantly
             </p>
           </div>
         </div>

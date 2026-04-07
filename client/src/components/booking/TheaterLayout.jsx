@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { BookingSummary } from "./BookingSummary.jsx";
+import { useSeatLocking } from "../../hooks/useSeatLocking.js";
 import { buildSeatCategories, generateTheaterSeats } from "../../utils/bookingData.js";
 
 const MAX_SEATS = 10;
@@ -11,6 +12,13 @@ const LegendDot = ({ className, label }) => (
   </span>
 );
 
+const ZoneBadge = ({ colorClass, label }) => (
+  <span className="inline-flex items-center gap-[0.6rem] rounded-full border border-[rgba(28,28,28,0.08)] bg-[rgba(255,255,255,0.92)] px-[1rem] py-[0.5rem] text-[1.1rem] font-semibold text-[var(--color-text-secondary)]">
+    <span className={`h-[1.1rem] w-[1.1rem] rounded-full ${colorClass}`} />
+    {label}
+  </span>
+);
+
 const SeatButton = ({ seat, onToggle }) => {
   const baseClassName =
     "flex h-[3rem] w-[3rem] items-center justify-center rounded-[0.8rem] text-[1rem] font-bold transition-all duration-150 md:h-[3.4rem] md:w-[3.4rem]";
@@ -18,6 +26,8 @@ const SeatButton = ({ seat, onToggle }) => {
 
   if (seat.status === "booked") {
     stateClassName = "cursor-not-allowed bg-[rgba(28,28,28,0.08)] text-[var(--color-text-secondary)]/70";
+  } else if (seat.status === "locked") {
+    stateClassName = "cursor-not-allowed bg-[rgba(245,158,11,0.22)] text-[#8a5a00]";
   } else if (seat.status === "selected") {
     stateClassName = "scale-105 bg-[var(--color-primary)] text-[var(--color-text-light)] ring-2 ring-[rgba(248,68,100,0.24)]";
   } else {
@@ -27,7 +37,7 @@ const SeatButton = ({ seat, onToggle }) => {
   return (
     <button
       type="button"
-      disabled={seat.status === "booked"}
+      disabled={seat.status === "booked" || seat.status === "locked"}
       onClick={() => onToggle(seat.id)}
       title={`Seat ${seat.id}`}
       className={`${baseClassName} ${stateClassName}`}
@@ -37,57 +47,34 @@ const SeatButton = ({ seat, onToggle }) => {
   );
 };
 
-const syncSeatsWithEvent = (event, previousSeats = []) => {
-  const nextSeats = generateTheaterSeats(event);
-  const previouslySelectedIds = new Set(
-    previousSeats.filter((seat) => seat.status === "selected").map((seat) => seat.id)
-  );
-
-  return nextSeats.map((seat) =>
-    previouslySelectedIds.has(seat.id) && seat.status !== "booked"
-      ? { ...seat, status: "selected" }
-      : seat
-  );
-};
-
 export const TheaterLayout = ({ event }) => {
   const categories = useMemo(() => buildSeatCategories(event), [event]);
-  const [seats, setSeats] = useState(() => generateTheaterSeats(event));
+  const { bookedSeatIdSet, clearSelection, lockedByOtherSeatIdSet, selectedSeatIds, selectedSeatIdSet, toggleSeat } = useSeatLocking({
+    event,
+    maxSelectable: MAX_SEATS,
+  });
+
+  const seats = useMemo(
+    () =>
+      generateTheaterSeats(event).map((seat) => {
+        if (bookedSeatIdSet.has(seat.id)) {
+          return { ...seat, status: "booked" };
+        }
+
+        if (selectedSeatIdSet.has(seat.id)) {
+          return { ...seat, status: "selected" };
+        }
+
+        if (lockedByOtherSeatIdSet.has(seat.id)) {
+          return { ...seat, status: "locked" };
+        }
+
+        return seat;
+      }),
+    [bookedSeatIdSet, event, lockedByOtherSeatIdSet, selectedSeatIdSet]
+  );
+
   const selectedSeats = useMemo(() => seats.filter((seat) => seat.status === "selected"), [seats]);
-
-  useEffect(() => {
-    setSeats((currentSeats) => syncSeatsWithEvent(event, currentSeats));
-  }, [event]);
-
-  const toggleSeat = (seatId) => {
-    setSeats((currentSeats) => {
-      const selectedCount = currentSeats.filter((seat) => seat.status === "selected").length;
-
-      return currentSeats.map((seat) => {
-        if (seat.id !== seatId || seat.status === "booked") {
-          return seat;
-        }
-
-        if (seat.status === "selected") {
-          return { ...seat, status: "available" };
-        }
-
-        if (selectedCount >= MAX_SEATS) {
-          return seat;
-        }
-
-        return { ...seat, status: "selected" };
-      });
-    });
-  };
-
-  const clearSelection = () => {
-    setSeats((currentSeats) =>
-      currentSeats.map((seat) =>
-        seat.status === "selected" ? { ...seat, status: "available" } : seat
-      )
-    );
-  };
 
   const summary = useMemo(() => {
     const groupedSummary = {};
@@ -134,20 +121,20 @@ export const TheaterLayout = ({ event }) => {
         <div className="mt-[2rem] flex flex-wrap items-center justify-center gap-[1.2rem]">
           <LegendDot className="border border-[rgba(28,28,28,0.08)] bg-white" label="Available" />
           <LegendDot className="bg-[var(--color-primary)]" label="Selected" />
+          <LegendDot className="bg-[rgba(245,158,11,0.22)]" label="Locked" />
           <LegendDot className="bg-[rgba(28,28,28,0.08)]" label="Booked" />
+        </div>
+
+        <div className="mt-[1.4rem] flex flex-wrap items-center justify-center gap-[0.9rem]">
           {categories.map((category) => (
-            <LegendDot
-              key={category.id}
-              className={category.colorClass}
-              label={`${category.label} - Rs ${category.price}`}
-            />
+            <ZoneBadge key={category.id} colorClass={category.colorClass} label={`${category.label} - Rs ${category.price}`} />
           ))}
         </div>
 
         <div className="mt-[2.4rem] space-y-[1.6rem] overflow-x-auto">
           {categories.map((category) => {
             const categorySeats = seats.filter((seat) => seat.category === category.id);
-            const availableSeats = categorySeats.filter((seat) => seat.status !== "booked").length;
+            const availableSeats = categorySeats.filter((seat) => seat.status === "available" || seat.status === "selected").length;
 
             return (
               <div key={category.id} className="space-y-[0.8rem]">
@@ -185,7 +172,7 @@ export const TheaterLayout = ({ event }) => {
       </section>
 
       <BookingSummary
-        selectedItems={selectedSeats.map((seat) => seat.id)}
+        selectedItems={selectedSeatIds}
         summary={summary}
         total={total}
         currency="Rs "

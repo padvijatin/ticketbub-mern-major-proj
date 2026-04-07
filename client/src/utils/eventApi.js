@@ -50,8 +50,14 @@ export const getEvents = async (params = {}) => {
   return (response.data.events || []).map(normalizeEvent);
 };
 
-export const getEventById = async (eventId) => {
-  const response = await axios.get(`${eventsApiUrl}/${eventId}`);
+export const getEventById = async (eventId, authorizationToken = "") => {
+  const response = await axios.get(`${eventsApiUrl}/${eventId}`, {
+    headers: authorizationToken
+      ? {
+          Authorization: authorizationToken,
+        }
+      : undefined,
+  });
   return normalizeEvent(response.data.event || null);
 };
 

@@ -1,6 +1,8 @@
 const Event = require("../models/event-model");
 const Wishlist = require("../models/wishlist-model");
 const Review = require("../models/review-model");
+const { getSeatLockSnapshot } = require("../services/seat-lock-service");
+const { getAuthorizationToken, resolveUserFromToken } = require("../services/socket-auth");
 const { buildZoneSeatIds, getZoneAvailability } = require("../utils/seat-layout");
 
 const moviePattern = /(movie|film|cinema|screen|premiere)/i;
@@ -287,21 +289,20 @@ const normalizeBookedSeats = (bookedSeats = [], seatZones = []) => {
 
 const getBookedSeatsFromAvailability = (seatZones = [], bookedSeats = [], availableSeats) => {
   const normalizedBookedSeats = normalizeBookedSeats(bookedSeats, seatZones);
+
+  if (normalizedBookedSeats.length) {
+    return normalizedBookedSeats;
+  }
+
   const allSeatIds = seatZones.flatMap((zone) => buildZoneSeatIds(zone));
   const totalSeats = allSeatIds.length;
   const requestedAvailableSeats = Number(availableSeats);
 
   if (!Number.isFinite(requestedAvailableSeats) || requestedAvailableSeats < 0) {
-    return normalizedBookedSeats;
+    return [];
   }
 
   const clampedAvailableSeats = clampSeatCount(requestedAvailableSeats, totalSeats);
-  const currentAvailableSeats = Math.max(0, totalSeats - normalizedBookedSeats.length);
-
-  if (clampedAvailableSeats === currentAvailableSeats) {
-    return normalizedBookedSeats;
-  }
-
   const targetBookedCount = Math.max(0, totalSeats - clampedAvailableSeats);
   return allSeatIds.slice(-targetBookedCount);
 };
@@ -338,7 +339,7 @@ const hasSeatStateChanged = (event, nextState) => {
   });
 };
 
-const serializeEvent = (event, interestedCountMap = {}, reviewSummaryMap = {}) => {
+const serializeEvent = (event, interestedCountMap = {}, reviewSummaryMap = {}, seatLocks = {}) => {
   const contentType = detectContentType(event.category);
   const normalizedSeatZones = normalizeSeatZones(event.seatZones, contentType, event.price);
   const bookedSeats = getBookedSeatsFromAvailability(normalizedSeatZones, event.bookedSeats, event.availableSeats);
@@ -371,6 +372,8 @@ const serializeEvent = (event, interestedCountMap = {}, reviewSummaryMap = {}) =
     price: getStartingPrice(event.price, seatZones),
     seatZones,
     bookedSeats,
+    lockedSeats: seatLocks.lockedSeatIds || [],
+    currentUserLockedSeats: seatLocks.currentUserLockedSeats || [],
     totalSeats,
     availableSeats,
     averageRating: reviewSummary.averageRating,
@@ -455,13 +458,15 @@ const getEventById = async (req, res) => {
       await event.save();
     }
 
-    const [interestedCountMap, reviewSummaryMap] = await Promise.all([
+    const [interestedCountMap, reviewSummaryMap, viewer] = await Promise.all([
       buildInterestedCountMap([event]),
       buildReviewSummaryMap([event]),
+      resolveUserFromToken(getAuthorizationToken(req.headers)),
     ]);
+    const seatLocks = getSeatLockSnapshot(event._id.toString(), viewer?._id?.toString?.() || "");
 
     return res.status(200).json({
-      event: serializeEvent(event.toObject(), interestedCountMap, reviewSummaryMap),
+      event: serializeEvent(event.toObject(), interestedCountMap, reviewSummaryMap, seatLocks),
     });
   } catch (error) {
     return res.status(500).json({ message: "Unable to load event right now" });
@@ -511,5 +516,4 @@ module.exports = {
   buildEventQuery,
   syncEventSeatState,
 };
-
 

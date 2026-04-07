@@ -1,104 +1,87 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Check, Mic2, Minus, Plus } from "lucide-react";
 import { BookingSummary } from "./BookingSummary.jsx";
+import { useSeatLocking } from "../../hooks/useSeatLocking.js";
 import { generateExperienceZones } from "../../utils/bookingData.js";
 
 const MAX_TICKETS = 10;
 
-const syncSelectionWithZones = (zones, currentSelection) => {
-  const nextSelection = {};
+export const ExperienceLayout = ({ event }) => {
+  const baseZones = useMemo(() => generateExperienceZones(event), [event]);
+  const {
+    bookedSeatIdSet,
+    clearSelection,
+    lockedByOtherSeatIdSet,
+    selectedSeatIds,
+    selectedSeatIdSet,
+    lockSeat,
+    releaseSeat,
+  } = useSeatLocking({ event, maxSelectable: MAX_TICKETS });
+  const totalTickets = selectedSeatIds.length;
 
-  Object.entries(currentSelection).forEach(([zoneId, seatIds]) => {
+  const zones = useMemo(
+    () =>
+      baseZones.map((zone) => {
+        const newlyBookedTicketIds = zone.availableTicketIds.filter((seatId) => bookedSeatIdSet.has(seatId));
+        const liveAvailableTicketIds = zone.availableTicketIds.filter((seatId) => !bookedSeatIdSet.has(seatId));
+        const interactiveTicketIds = liveAvailableTicketIds.filter(
+          (seatId) => !lockedByOtherSeatIdSet.has(seatId) || selectedSeatIdSet.has(seatId)
+        );
+        const selectedTicketIds = interactiveTicketIds.filter((seatId) => selectedSeatIdSet.has(seatId));
+
+        return {
+          ...zone,
+          interactiveTicketIds,
+          soldTickets: zone.soldTickets + newlyBookedTicketIds.length,
+          selectedTicketIds,
+          remainingTickets: Math.max(0, interactiveTicketIds.length - selectedTicketIds.length),
+        };
+      }),
+    [baseZones, bookedSeatIdSet, lockedByOtherSeatIdSet, selectedSeatIdSet]
+  );
+
+  const updateQuantity = (zoneId, delta) => {
     const zone = zones.find((item) => item.id === zoneId);
 
     if (!zone) {
       return;
     }
 
-    const validSeatIds = seatIds.filter((seatId) => zone.availableTicketIds.includes(seatId));
+    if (delta < 0) {
+      const lastSeatId = zone.selectedTicketIds[zone.selectedTicketIds.length - 1];
 
-    if (validSeatIds.length) {
-      nextSelection[zoneId] = validSeatIds;
+      if (lastSeatId) {
+        releaseSeat(lastSeatId);
+      }
+
+      return;
     }
-  });
 
-  return nextSelection;
-};
+    if (totalTickets >= MAX_TICKETS) {
+      return;
+    }
 
-export const ExperienceLayout = ({ event }) => {
-  const zones = useMemo(() => generateExperienceZones(event), [event]);
-  const [selection, setSelection] = useState({});
-  const totalTickets = Object.values(selection).reduce((sum, seatIds) => sum + seatIds.length, 0);
+    const nextSeatId = zone.interactiveTicketIds.find((seatId) => !zone.selectedTicketIds.includes(seatId));
 
-  useEffect(() => {
-    setSelection((currentSelection) => syncSelectionWithZones(zones, currentSelection));
-  }, [zones]);
-
-  const updateQuantity = (zoneId, delta) => {
-    setSelection((currentSelection) => {
-      const currentSeatIds = currentSelection[zoneId] || [];
-      const zone = zones.find((item) => item.id === zoneId);
-      const selectedCount = Object.values(currentSelection).reduce((sum, seatIds) => sum + seatIds.length, 0);
-
-      if (!zone) {
-        return currentSelection;
-      }
-
-      if (delta < 0) {
-        if (!currentSeatIds.length) {
-          return currentSelection;
-        }
-
-        const nextSelection = { ...currentSelection };
-        const nextSeatIds = currentSeatIds.slice(0, -1);
-
-        if (nextSeatIds.length) {
-          nextSelection[zoneId] = nextSeatIds;
-        } else {
-          delete nextSelection[zoneId];
-        }
-
-        return nextSelection;
-      }
-
-      if (selectedCount >= MAX_TICKETS) {
-        return currentSelection;
-      }
-
-      const nextSeatId = zone.availableTicketIds.find((seatId) => !currentSeatIds.includes(seatId));
-
-      if (!nextSeatId) {
-        return currentSelection;
-      }
-
-      return {
-        ...currentSelection,
-        [zoneId]: [...currentSeatIds, nextSeatId],
-      };
-    });
-  };
-
-  const clearSelection = () => {
-    setSelection({});
+    if (nextSeatId) {
+      lockSeat(nextSeatId);
+    }
   };
 
   const summary = useMemo(
     () =>
-      Object.entries(selection).map(([zoneId, seatIds]) => {
-        const zone = zones.find((item) => item.id === zoneId);
-
-        return {
+      zones
+        .filter((zone) => zone.selectedTicketIds.length)
+        .map((zone) => ({
           label: zone.label,
-          count: seatIds.length,
+          count: zone.selectedTicketIds.length,
           price: zone.price,
           currency: zone.currency,
-        };
-      }),
-    [selection, zones]
+        })),
+    [zones]
   );
 
   const total = summary.reduce((amount, item) => amount + item.count * item.price, 0);
-  const selectedItems = Object.values(selection).flat();
   const bookingMeta = {
     bookingType: "experience",
     selectedZones: summary.map((item) => item.label),
@@ -119,10 +102,9 @@ export const ExperienceLayout = ({ event }) => {
 
           <div className="mx-auto mt-[2.4rem] flex max-w-[52rem] flex-col gap-[1.2rem]">
             {zones.map((zone) => {
-              const availableTickets = zone.availableTicketIds.length;
-              const selectedCount = (selection[zone.id] || []).length;
+              const selectedCount = zone.selectedTicketIds.length;
               const soldRatio = zone.totalTickets ? Math.min(zone.soldTickets / zone.totalTickets, 1) : 0;
-              const isSoldOut = availableTickets <= 0;
+              const isSoldOut = zone.remainingTickets <= 0 && selectedCount === 0;
 
               return (
                 <button
@@ -153,7 +135,7 @@ export const ExperienceLayout = ({ event }) => {
                       />
                     </div>
                     <span className="text-[1.2rem] text-[var(--color-text-secondary)]">
-                      {isSoldOut ? "Sold out" : `${availableTickets} left`}
+                      {isSoldOut ? "Sold out" : `${zone.remainingTickets} left`}
                     </span>
                   </div>
 
@@ -170,9 +152,8 @@ export const ExperienceLayout = ({ event }) => {
 
         <div className="grid gap-[1.4rem] md:grid-cols-2">
           {zones.map((zone) => {
-            const availableTickets = zone.availableTicketIds.length;
-            const quantity = (selection[zone.id] || []).length;
-            const isSoldOut = availableTickets <= 0;
+            const quantity = zone.selectedTicketIds.length;
+            const isSoldOut = zone.remainingTickets <= 0 && quantity === 0;
 
             return (
               <article
@@ -217,7 +198,7 @@ export const ExperienceLayout = ({ event }) => {
 
                 <div className="mt-[1.5rem] flex items-center justify-between border-t border-[rgba(28,28,28,0.08)] pt-[1.3rem]">
                   <span className="text-[1.25rem] text-[var(--color-text-secondary)]">
-                    {isSoldOut ? "Sold out" : `${availableTickets} available`}
+                    {isSoldOut ? "Sold out" : `${zone.remainingTickets} available`}
                   </span>
 
                   <div className="flex items-center gap-[1rem]">
@@ -235,7 +216,7 @@ export const ExperienceLayout = ({ event }) => {
                     <button
                       type="button"
                       onClick={() => updateQuantity(zone.id, 1)}
-                      disabled={isSoldOut || quantity >= availableTickets || totalTickets >= MAX_TICKETS}
+                      disabled={isSoldOut || totalTickets >= MAX_TICKETS}
                       className="inline-flex h-[3.7rem] w-[3.7rem] items-center justify-center rounded-[1rem] border border-[rgba(28,28,28,0.08)] bg-white text-[var(--color-text-primary)] transition-colors duration-200 hover:border-[rgba(248,68,100,0.18)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Plus className="h-[1.6rem] w-[1.6rem]" />
@@ -249,7 +230,7 @@ export const ExperienceLayout = ({ event }) => {
       </section>
 
       <BookingSummary
-        selectedItems={selectedItems}
+        selectedItems={selectedSeatIds}
         summary={summary}
         total={total}
         currency="Rs "

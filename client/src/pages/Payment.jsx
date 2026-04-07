@@ -131,8 +131,8 @@ export const Payment = () => {
   });
 
   const { data: event, isLoading } = useQuery({
-    queryKey: ["event", id],
-    queryFn: () => getEventById(id),
+    queryKey: ["event", id, authorizationToken],
+    queryFn: () => getEventById(id, authorizationToken),
     enabled: Boolean(id),
   });
 
@@ -196,7 +196,7 @@ export const Payment = () => {
         authorizationToken,
       }),
     onSuccess: (response) => {
-      queryClient.setQueryData(["event", id], response.event);
+      queryClient.setQueryData(["event", id, authorizationToken], response.event);
       queryClient.invalidateQueries({ queryKey: ["event", id] });
       queryClient.invalidateQueries({ queryKey: ["related-events"] });
       queryClient.invalidateQueries({ queryKey: ["checkout-coupons", subtotal, authorizationToken] });

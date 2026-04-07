@@ -3,6 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const dotenv = require("dotenv");
 const path = require("path");
+const http = require("http");
 const connectDb = require("./utils/db");
 const authRoute = require("./router/auth-router");
 const bookingRoute = require("./router/booking-router");
@@ -11,10 +12,12 @@ const eventRoute = require("./router/event-router");
 const wishlistRoute = require("./router/wishlist-router");
 const adminRoute = require("./router/admin-router");
 const contactRoute = require("./router/contact-router");
+const { registerSeatSocketServer } = require("./services/socket-server");
 
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const configuredOrigins = (process.env.CLIENT_URL || "")
   .split(",")
@@ -86,8 +89,13 @@ app.use((error, _req, res, next) => {
 
 const startServer = async () => {
   await connectDb();
+  const io = registerSeatSocketServer({
+    server,
+    allowedOrigins: [...allowedOrigins],
+  });
+  app.locals.io = io;
 
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 };

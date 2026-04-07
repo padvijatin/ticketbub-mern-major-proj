@@ -9,6 +9,7 @@ server/node_modules/
 dist/
 client/dist/
 server/dist/
+server/uploads/
 
 .vite/
 coverage/
