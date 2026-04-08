@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, ImagePlus, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../store/auth.jsx";
+import PosterImage, { fallbackPosterImage, resolvePosterSource } from "../PosterImage.jsx";
 import {
   createAdminEvent,
   deleteAdminEvent,
@@ -106,7 +107,7 @@ const buildPayload = (formState, role) => ({
   date: formState.date ? new Date(formState.date).toISOString() : "",
   startTime: formState.startTime.trim(),
   price: Number(formState.price || 0),
-  poster: formState.poster.trim(),
+  posterUrl: formState.poster.trim(),
   posterFile: formState.posterFile,
   removePoster: formState.removePoster,
   status: role === "admin" ? formState.status : undefined,
@@ -128,7 +129,6 @@ const buildPayload = (formState, role) => ({
 const formInputClassName = "h-[4.6rem] rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] bg-white px-[1.2rem] text-[1.35rem] outline-none";
 const formTextareaClassName = "rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] bg-white px-[1.2rem] py-[1rem] text-[1.35rem] outline-none";
 const categoryChipClassName = "inline-flex rounded-full bg-[rgba(28,28,28,0.06)] px-[0.95rem] py-[0.38rem] text-[1.15rem] font-semibold text-[var(--color-text-primary)]";
-const fallbackImage = "/fallback.jpg";
 
 const EventManagement = ({ role }) => {
   const queryClient = useQueryClient();
@@ -145,6 +145,23 @@ const EventManagement = ({ role }) => {
     queryFn: () => getAdminEvents(authorizationToken),
     enabled: Boolean(authorizationToken),
   });
+
+  const mergeEventIntoCache = (nextEvent) => {
+    if (!nextEvent) {
+      return;
+    }
+
+    queryClient.setQueryData(["admin-events", authorizationToken, role], (currentEvents = []) => {
+      const normalizedEvents = Array.isArray(currentEvents) ? currentEvents : [];
+      const existingIndex = normalizedEvents.findIndex((event) => event.id === nextEvent.id);
+
+      if (existingIndex < 0) {
+        return [nextEvent, ...normalizedEvents];
+      }
+
+      return normalizedEvents.map((event) => (event.id === nextEvent.id ? nextEvent : event));
+    });
+  };
 
   const posterPreview = useMemo(() => {
     if (formState.posterFile instanceof File) {
@@ -169,11 +186,16 @@ const EventManagement = ({ role }) => {
   const invalidateManagementQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-events"] });
     queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["event"] });
+    queryClient.invalidateQueries({ queryKey: ["related-events"] });
   };
 
   const createMutation = useMutation({
     mutationFn: (payload) => createAdminEvent({ authorizationToken, payload }),
-    onSuccess: () => {
+    onSuccess: (createdEvent) => {
+      mergeEventIntoCache(createdEvent);
+      setImageLoadErrors({});
+      setPreviewEvent(null);
       toast.success(role === "admin" ? "Event created successfully" : "Event submitted successfully");
       invalidateManagementQueries();
       resetForm();
@@ -185,7 +207,10 @@ const EventManagement = ({ role }) => {
 
   const updateMutation = useMutation({
     mutationFn: ({ eventId, payload }) => updateAdminEvent({ authorizationToken, eventId, payload }),
-    onSuccess: () => {
+    onSuccess: (updatedEvent) => {
+      mergeEventIntoCache(updatedEvent);
+      setImageLoadErrors({});
+      setPreviewEvent((currentPreview) => (currentPreview?.id === updatedEvent?.id ? updatedEvent : null));
       toast.success("Event updated successfully");
       invalidateManagementQueries();
       resetForm();
@@ -244,16 +269,22 @@ const EventManagement = ({ role }) => {
 
   const handleEdit = (event) => {
     setEditingEventId(event.id);
+    setImageLoadErrors((current) => {
+      if (!current[event.id]) {
+        return current;
+      }
+
+      const nextState = { ...current };
+      delete nextState[event.id];
+      return nextState;
+    });
     setFormState(eventToFormState(event));
     setIsFormOpen(true);
   };
 
   const getPosterSrc = (event) => {
-    if (!event) {
-      return fallbackImage;
-    }
-
-    return imageLoadErrors[event.id] ? fallbackImage : event.poster || fallbackImage;
+    if (!event) return fallbackPosterImage;
+    return imageLoadErrors[event.id] ? fallbackPosterImage : resolvePosterSource(event.poster);
   };
 
   const handleSubmit = (event) => {
@@ -463,16 +494,23 @@ const EventManagement = ({ role }) => {
                   <input
                     type="checkbox"
                     checked={formState.removePoster}
-                    onChange={(eventObject) => setFormState((current) => ({ ...current, removePoster: eventObject.target.checked, posterFile: eventObject.target.checked ? null : current.posterFile }))}
+                    onChange={(eventObject) =>
+                      setFormState((current) => ({
+                        ...current,
+                        poster: eventObject.target.checked ? "" : current.poster,
+                        removePoster: eventObject.target.checked,
+                        posterFile: eventObject.target.checked ? null : current.posterFile,
+                      }))
+                    }
                   />
                   Remove current poster
                 </label>
                 <div className="mt-[1rem] overflow-hidden rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] bg-[rgba(28,28,28,0.02)]">
-                  {posterPreview ? (
-                    <img src={posterPreview} alt="Poster preview" className="h-[20rem] w-full object-cover" />
-                  ) : (
-                    <div className="grid h-[20rem] place-items-center text-[1.2rem] text-[var(--color-text-secondary)]">No poster selected</div>
-                  )}
+                  <PosterImage
+                    src={posterPreview}
+                    alt={posterPreview ? "Poster preview" : "Poster fallback preview"}
+                    className="h-[20rem] w-full object-cover"
+                  />
                 </div>
               </div>
             </div>
@@ -577,7 +615,7 @@ const EventManagement = ({ role }) => {
                 <div className="flex flex-col gap-[1.4rem] lg:flex-row lg:items-center">
                   <div className="flex min-w-0 flex-1 items-start gap-[1.6rem]">
                     <div className="h-[7.8rem] w-[11.6rem] shrink-0 overflow-hidden rounded-[1.4rem] bg-[rgba(28,28,28,0.04)]">
-                      <img
+                      <PosterImage
                         src={getPosterSrc(event)}
                         alt={event.title}
                         className="h-full w-full object-cover"
@@ -688,7 +726,7 @@ const EventManagement = ({ role }) => {
               </div>
 
               <div className="mt-[1.6rem] overflow-hidden rounded-[1.8rem] bg-[rgba(28,28,28,0.04)]">
-                <img
+                <PosterImage
                   src={getPosterSrc(previewEvent)}
                   alt={previewEvent.title}
                   className="h-[20rem] w-full object-cover"

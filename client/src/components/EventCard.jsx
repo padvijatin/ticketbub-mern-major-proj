@@ -15,8 +15,8 @@ const fallbackByType = {
   sports: "bg-[linear-gradient(135deg,#0f172a_0%,#0f766e_52%,#22c55e_100%)]",
   event: "bg-[linear-gradient(135deg,#1c1c1c_0%,#7b3fe4_46%,#f84464_100%)]",
 };
-
 const fallbackImage = "/fallback.jpg";
+
 
 const formatDate = (value) => {
   if (!value) {
@@ -134,9 +134,7 @@ const EventCard = ({ event = {}, isLoading = false, size = "default" }) => {
   const fallbackClassName = fallbackByType[event.contentType] || fallbackByType.event;
 
   const handleImageError = () => {
-    if (imageSrc !== fallbackImage) {
-      setImageSrc(fallbackImage);
-    }
+    setImageSrc(fallbackImage);
   };
 
   const handleWishlistToggle = (eventObject) => {
@@ -166,12 +164,14 @@ const EventCard = ({ event = {}, isLoading = false, size = "default" }) => {
         className={`group flex h-full flex-col overflow-hidden rounded-[2rem] border border-[rgba(28,28,28,0.08)] bg-[var(--color-bg-card)] shadow-[var(--shadow-soft)] transition-[border-color,box-shadow] duration-200 hover:border-[rgba(248,68,100,0.14)] hover:shadow-[0_20px_34px_rgba(28,28,28,0.08)] ${cardShellClassName}`}
       >
         <div className={`relative overflow-hidden ${mediaAspectClassName} ${fallbackClassName}`}>
-          <img
-            src={imageSrc}
-            alt={title}
-            className="h-full w-full object-cover"
-            onError={handleImageError}
-          />
+          {imageSrc ? (
+            <img
+              src={imageSrc}
+              alt={title}
+              className="h-full w-full object-cover"
+              onError={handleImageError}
+            />
+          ) : null}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(28,28,28,0.04)_0%,rgba(28,28,28,0.14)_45%,rgba(28,28,28,0.54)_100%)]" />
 
           <div className="absolute left-[1.2rem] top-[1.2rem] max-w-[68%]">

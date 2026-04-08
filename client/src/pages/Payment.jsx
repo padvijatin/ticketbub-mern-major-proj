@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, ChevronLeft, Lock, QrCode, Shield, Smartphone, Tag, WalletCards } from "lucide-react";
 import { toast } from "react-toastify";
+import PosterImage from "../components/PosterImage.jsx";
 import { getCoupons, validateCoupon } from "../utils/couponApi.js";
 import { createPaymentOrder, getEventById, verifyPayment } from "../utils/eventApi.js";
 import { useAuth } from "../store/auth.jsx";
@@ -480,7 +481,7 @@ export const Payment = () => {
 
               {event ? (
                 <div className="mt-[1.5rem] flex gap-[1rem]">
-                  <img src={event.poster || "/fallback.jpg"} alt={event.title} className="h-[6.4rem] w-[6.4rem] rounded-[1.4rem] object-cover" />
+                  <PosterImage src={event.poster} alt={event.title} className="h-[6.4rem] w-[6.4rem] rounded-[1.4rem] object-cover" />
                   <div className="min-w-0">
                     <p className="line-clamp-2 text-[1.52rem] font-bold leading-[1.35] text-[var(--color-text-primary)]">{event.title}</p>
                     <p className="mt-[0.25rem] text-[1.15rem] text-[var(--color-text-secondary)]">{formatEventSchedule(event.date)}</p>

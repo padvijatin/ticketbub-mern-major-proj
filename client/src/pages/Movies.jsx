@@ -70,8 +70,8 @@ export const Movies = () => {
           <span className="inline-flex rounded-full bg-[rgba(248,68,100,0.08)] px-[1.2rem] py-[0.8rem] text-[1.2rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-primary)]">
             Movies
           </span>
-          <h1 className="mt-[1.4rem] max-w-[12ch] text-[clamp(3rem,4.4vw,5rem)] leading-[1.05] font-extrabold tracking-[-0.04em]">
-            Big-screen stories for your next theatre night.
+          <h1 className="mt-[1.4rem] max-w-[15ch] text-[clamp(3rem,4.4vw,5rem)] leading-[1.05] font-extrabold tracking-[-0.04em]">
+            Big-screen stories for your next movie night.
           </h1>
           <p className="mt-[1.2rem] max-w-[62rem] text-[1.6rem] leading-[1.7] text-[var(--color-text-secondary)]">
             Browse fresh releases, fan favorites, and movie nights near you.

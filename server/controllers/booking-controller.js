@@ -11,7 +11,7 @@ const {
   releaseSeats,
 } = require("../services/seat-lock-service");
 const { buildZoneSeatIds } = require("../utils/seat-layout");
-const { serializeEvent, syncEventSeatState } = require("./event-controller");
+const { serializeEvent, syncEventSeatState, ensureEventPosterState } = require("./event-controller");
 
 const buildBookingId = () =>
   `TH${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -407,6 +407,14 @@ const listUserBookings = async (req, res) => {
       .populate("event", "title venue city date poster category")
       .lean();
 
+    await Promise.all(
+      bookings.map(async (booking) => {
+        if (booking.event) {
+          await ensureEventPosterState(booking.event);
+        }
+      })
+    );
+
     return res.status(200).json({
       count: bookings.length,
       bookings: bookings.map((booking) => ({
@@ -494,6 +502,7 @@ const getBookingTicketByBookingId = async (req, res) => {
       return res.status(404).json({ message: "Event not found for this ticket" });
     }
 
+    await ensureEventPosterState(event);
     const normalizedEvent = serializeEvent(event.toObject());
     return res.status(200).json({
       booking: serializeBooking(booking),

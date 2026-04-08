@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { MapComponent } from "../components/MapComponent.jsx";
+import PosterImage, { fallbackPosterImage } from "../components/PosterImage.jsx";
 import { Rating } from "../components/Rating.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useWishlist } from "../store/wishlist.jsx";
@@ -225,9 +226,7 @@ export const EventDetails = () => {
 
         <div className="relative overflow-hidden rounded-[3rem] border border-[rgba(28,28,28,0.06)] bg-white p-[1.6rem] shadow-[var(--shadow-soft)]">
           <div className="relative aspect-[16/7] overflow-hidden rounded-[2.4rem] bg-[linear-gradient(135deg,#1c1c1c_0%,#7b3fe4_46%,#f84464_100%)]">
-            {event.poster ? (
-              <img src={event.poster} alt={event.title} className="h-full w-full object-cover" />
-            ) : null}
+            <PosterImage src={event.poster} alt={event.title} className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(28,28,28,0.12)_0%,rgba(28,28,28,0.18)_38%,rgba(28,28,28,0.68)_100%)]" />
 
             <Link
@@ -450,11 +449,7 @@ export const EventDetails = () => {
                   You might also like
                 </h3>
                 <Link to={`/event/${suggestedEvent.id}`} className="mt-[1.6rem] flex gap-[1.2rem]">
-                  <img
-                    src={suggestedEvent.poster || "/fallback.jpg"}
-                    alt={suggestedEvent.title}
-                    className="h-[8.4rem] w-[8.4rem] rounded-[1.4rem] object-cover"
-                  />
+                  <PosterImage src={suggestedEvent.poster || fallbackPosterImage} alt={suggestedEvent.title} className="h-[8.4rem] w-[8.4rem] rounded-[1.4rem] object-cover" />
                   <div className="min-w-0">
                     <p className="line-clamp-2 text-[1.5rem] font-bold leading-[1.4] text-[var(--color-text-primary)]">
                       {suggestedEvent.title}

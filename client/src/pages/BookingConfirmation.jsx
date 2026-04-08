@@ -5,6 +5,7 @@ import { CalendarDays, CheckCircle2, Download, MapPin, Share2, Tag, Ticket } fro
 import { toPng } from "html-to-image";
 import { toast } from "react-toastify";
 import { BrandLogo } from "../components/BrandLogo.jsx";
+import PosterImage from "../components/PosterImage.jsx";
 import { getEventById } from "../utils/eventApi.js";
 
 export const BookingConfirmation = () => {
@@ -128,7 +129,7 @@ export const BookingConfirmation = () => {
           </div>
           {event ? (
             <div className="relative h-[20rem] overflow-hidden">
-              <img src={event.poster || "/fallback.jpg"} alt={event.title} className="h-full w-full object-cover" />
+              <PosterImage src={event.poster} alt={event.title} className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(28,28,28,0.12)_0%,rgba(28,28,28,0.72)_100%)]" />
               <div className="absolute bottom-[1.8rem] left-[1.8rem] right-[1.8rem]">
                 <h2 className="text-[2.2rem] font-extrabold tracking-[-0.03em] text-white">{event.title}</h2>

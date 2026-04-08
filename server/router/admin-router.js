@@ -9,8 +9,8 @@ router.use(authMiddleware);
 
 router.get("/dashboard", adminController.getDashboardStats);
 router.get("/events", adminController.listEvents);
-router.post("/events", imageUpload.single("posterFile"), adminController.createEvent);
-router.patch("/events/:id", imageUpload.single("posterFile"), adminController.updateEvent);
+router.post("/events", imageUpload.single("poster"), adminController.createEvent);
+router.patch("/events/:id", imageUpload.single("poster"), adminController.updateEvent);
 router.delete("/events/:id", adminController.deleteEvent);
 router.get("/users", adminController.listUsers);
 router.patch("/users/:id", adminController.updateUser);

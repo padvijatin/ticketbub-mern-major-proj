@@ -72,6 +72,6 @@ export const Organizer = () => {
         {renderContent()}
       </main>
     </div>
-  );s
+  );
 };
 

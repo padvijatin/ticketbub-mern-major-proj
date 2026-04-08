@@ -7,6 +7,7 @@ import "swiper/css";
 import "swiper/css/navigation";
 import EventCard from "../components/EventCard.jsx";
 import { HeroCarousel } from "../components/HeroCarousel.jsx";
+import PosterImage from "../components/PosterImage.jsx";
 import { useLocationStore, filterItemsByLocation } from "../store/location.jsx";
 import { useWishlist } from "../store/wishlist.jsx";
 import { getEvents } from "../utils/eventApi.js";
@@ -17,19 +18,11 @@ const heroFallbackByType = {
   event: "bg-[linear-gradient(135deg,#1c1c1c_0%,#7b3fe4_46%,#f84464_100%)]",
 };
 const HeroSlide = ({ slide }) => {
-  const [imageFailed, setImageFailed] = useState(false);
   const fallbackClassName = heroFallbackByType[slide.contentType] || heroFallbackByType.event;
 
   return (
     <section className={`relative h-[34rem] overflow-hidden rounded-[2.8rem] md:h-[44rem] ${fallbackClassName}`}>
-      {!imageFailed && slide.poster ? (
-        <img
-          src={slide.poster}
-          alt={slide.title}
-          className="absolute inset-0 h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
-        />
-      ) : null}
+      <PosterImage src={slide.poster} alt={slide.title} className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(28,28,28,0.86)_0%,rgba(28,28,28,0.48)_44%,rgba(28,28,28,0.1)_100%)]" />
 
       <div className="relative z-10 flex h-full flex-col justify-end p-[2.4rem] text-[var(--color-text-light)] md:p-[4rem]">

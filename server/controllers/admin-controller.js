@@ -2,9 +2,10 @@ const Event = require("../models/event-model");
 const Booking = require("../models/booking-model");
 const Coupon = require("../models/coupon-model");
 const User = require("../models/user-model");
-const { serializeEvent, syncEventSeatState } = require("./event-controller");
+const { serializeEvent, syncEventPosterStateForList, syncEventSeatState } = require("./event-controller");
 const { serializeUser, normalizeRole, normalizeStatus } = require("./auth-controller");
 const { serializeCoupon } = require("../services/coupon-service");
+const { deleteCloudinaryAsset } = require("../config/cloudinary");
 
 const getUserRole = (user) =>
   typeof user?.getRole === "function" ? user.getRole() : normalizeRole(user?.role || "user");
@@ -100,16 +101,18 @@ const parseSeatZones = (value, existingSeatZones = []) => {
 };
 
 const buildPosterPath = (req, existingPoster = "") => {
-  if (req.file?.filename) {
-    return `/uploads/events/${req.file.filename}`;
+  const uploadedPosterUrl = String(req.file?.path || "").trim();
+
+  if (uploadedPosterUrl) {
+    return uploadedPosterUrl;
   }
 
   if (parseBoolean(req.body?.removePoster, false)) {
     return "";
   }
 
-  if (typeof req.body?.poster === "string") {
-    return req.body.poster.trim();
+  if (typeof req.body?.posterUrl === "string") {
+    return req.body.posterUrl.trim();
   }
 
   return existingPoster;
@@ -295,10 +298,11 @@ const listEvents = async (req, res) => {
       return;
     }
 
-    const events = await Event.find(getAccessibleEventFilter(req)).sort({ createdAt: -1, date: 1 }).populate("organizer", "username email").lean();
+    const events = await Event.find(getAccessibleEventFilter(req)).sort({ createdAt: -1, date: 1 }).populate("organizer", "username email");
+    await syncEventPosterStateForList(events);
     return res.status(200).json({
       events: events.map((event) => ({
-        ...serializeEvent(event, {}, {}),
+        ...serializeEvent(event.toObject(), {}, {}),
         status: String(event.status || "pending"),
         address: event.address || "",
         state: event.state || "",
@@ -326,6 +330,8 @@ const createEvent = async (req, res) => {
       return;
     }
 
+    console.log("createEvent req.file:", req.file);
+
     const role = getUserRole(req.user);
     const payload = buildEventPayload({
       input: req.body,
@@ -347,6 +353,8 @@ const createEvent = async (req, res) => {
     await event.save();
     await event.populate("organizer", "username email");
 
+    console.log("createEvent saved poster:", event.poster);
+
     return res.status(201).json({
       message: "Event created successfully",
       event: {
@@ -367,6 +375,9 @@ const createEvent = async (req, res) => {
       },
     });
   } catch (error) {
+    if (req.file?.path) {
+      await deleteCloudinaryAsset(req.file.path);
+    }
     console.error("event-create-failed", error);
     return res.status(500).json({ message: "Unable to create event right now" });
   }
@@ -377,6 +388,8 @@ const updateEvent = async (req, res) => {
     if (!ensureStaff(req, res)) {
       return;
     }
+
+    console.log("updateEvent req.file:", req.file);
 
     const role = getUserRole(req.user);
     const query = role === "organizer" ? { _id: req.params.id, organizer: req.user._id } : { _id: req.params.id };
@@ -398,10 +411,18 @@ const updateEvent = async (req, res) => {
       return res.status(400).json({ message: "Please fill all required event fields" });
     }
 
+    const previousPoster = String(event.poster || "").trim();
     Object.assign(event, payload);
     syncEventSeatState(event);
     await event.save();
     await event.populate("organizer", "username email");
+
+    console.log("updateEvent saved poster:", event.poster);
+
+    const nextPoster = String(event.poster || "").trim();
+    if (previousPoster && previousPoster !== nextPoster) {
+      await deleteCloudinaryAsset(previousPoster);
+    }
 
     return res.status(200).json({
       message: "Event updated successfully",
@@ -423,6 +444,9 @@ const updateEvent = async (req, res) => {
       },
     });
   } catch (error) {
+    if (req.file?.path) {
+      await deleteCloudinaryAsset(req.file.path);
+    }
     console.error("event-update-failed", error);
     return res.status(500).json({ message: "Unable to update event right now" });
   }

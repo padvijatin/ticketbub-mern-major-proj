@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { HeroCarousel } from "./HeroCarousel.jsx";
+import PosterImage from "./PosterImage.jsx";
 
 const fallbackByType = {
   movie: "bg-[linear-gradient(135deg,#181032_0%,#7b3fe4_52%,#f84464_100%)]",
@@ -44,20 +44,12 @@ const getLocation = (item) => item.venue || item.city || item.location || "Venue
 const getBannerLink = (item) => (item.id ? `/event/${item.id}` : item.to || "/events");
 
 const HeroSlide = ({ item, type }) => {
-  const [imageFailed, setImageFailed] = useState(false);
   const image = item.poster || item.image || "";
   const fallbackClassName = fallbackByType[type] || fallbackByType.event;
 
   return (
     <article className={`relative h-[34rem] overflow-hidden rounded-[2.8rem] md:h-[44rem] ${fallbackClassName}`}>
-      {!imageFailed && image ? (
-        <img
-          src={image}
-          alt={item.title}
-          className="absolute inset-0 h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
-        />
-      ) : null}
+      <PosterImage src={image} alt={item.title} className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(28,28,28,0.88)_0%,rgba(28,28,28,0.6)_44%,rgba(28,28,28,0.16)_100%)]" />
 
       <div className="relative z-10 flex h-full flex-col justify-end p-[2.4rem] text-[var(--color-text-light)] md:p-[4rem]">

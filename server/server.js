@@ -4,6 +4,9 @@ const helmet = require("helmet");
 const dotenv = require("dotenv");
 const path = require("path");
 const http = require("http");
+
+dotenv.config({ path: path.resolve(__dirname, ".env") });
+
 const connectDb = require("./utils/db");
 const authRoute = require("./router/auth-router");
 const bookingRoute = require("./router/booking-router");
@@ -14,8 +17,6 @@ const adminRoute = require("./router/admin-router");
 const contactRoute = require("./router/contact-router");
 const paymentRoute = require("./router/payment-router");
 const { registerSeatSocketServer } = require("./services/socket-server");
-
-dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 const server = http.createServer(app);
@@ -54,6 +55,10 @@ app.use(
   })
 );
 app.use(express.json());
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/auth", authRoute);
 app.use("/api/bookings", bookingRoute);
@@ -76,12 +81,17 @@ app.use((error, _req, res, next) => {
     return;
   }
 
-  if (error?.message === "Only image uploads are allowed") {
+  if (error?.message === "Only image uploads are allowed" || error?.message === "Only jpg, jpeg, and png image uploads are allowed") {
     res.status(400).json({ message: error.message });
     return;
   }
 
   if (error?.name === "MulterError") {
+    res.status(400).json({ message: error.message || "Unable to upload image right now" });
+    return;
+  }
+
+  if (error?.http_code || (error?.message && /cloudinary|upload/i.test(error.message))) {
     res.status(400).json({ message: error.message || "Unable to upload image right now" });
     return;
   }

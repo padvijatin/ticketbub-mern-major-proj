@@ -59,7 +59,7 @@ const buildEventFormData = (payload = {}) => {
     "date",
     "startTime",
     "price",
-    "poster",
+    "posterUrl",
     "status",
     "isActive",
     "removePoster",
@@ -68,7 +68,7 @@ const buildEventFormData = (payload = {}) => {
   appendValue("seatZones", JSON.stringify(payload.seatZones || []));
 
   if (payload.posterFile instanceof File) {
-    formData.append("posterFile", payload.posterFile);
+    formData.append("poster", payload.posterFile);
   }
 
   return formData;

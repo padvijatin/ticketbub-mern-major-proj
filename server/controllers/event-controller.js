@@ -1,6 +1,7 @@
 const Event = require("../models/event-model");
 const Wishlist = require("../models/wishlist-model");
 const Review = require("../models/review-model");
+const { cloudinaryAssetExists } = require("../config/cloudinary");
 const { getSeatLockSnapshot } = require("../services/seat-lock-service");
 const { getAuthorizationToken, resolveUserFromToken } = require("../services/socket-auth");
 const { buildZoneSeatIds, getZoneAvailability } = require("../utils/seat-layout");
@@ -339,6 +340,27 @@ const hasSeatStateChanged = (event, nextState) => {
   });
 };
 
+const syncEventPosterState = async (event) => {
+  const currentPoster = String(event?.poster || "").trim();
+
+  if (!currentPoster) {
+    return false;
+  }
+
+  const posterExists = await cloudinaryAssetExists(currentPoster);
+  if (posterExists) {
+    return false;
+  }
+
+  event.poster = "";
+  await event.save();
+  return true;
+};
+
+const syncEventPosterStateForList = async (events = []) => {
+  await Promise.all(events.map((event) => syncEventPosterState(event)));
+};
+
 const serializeEvent = (event, interestedCountMap = {}, reviewSummaryMap = {}, seatLocks = {}) => {
   const contentType = detectContentType(event.category);
   const normalizedSeatZones = normalizeSeatZones(event.seatZones, contentType, event.price);
@@ -415,6 +437,8 @@ const getEvents = async (req, res) => {
 
     const events = await eventQuery;
 
+    await syncEventPosterStateForList(events);
+
     await Promise.all(
       events.map(async (event) => {
         const previousState = event.toObject({ depopulate: true });
@@ -450,6 +474,8 @@ const getEventById = async (req, res) => {
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
+
+    await syncEventPosterState(event);
 
     const previousState = event.toObject({ depopulate: true });
     const syncedState = syncEventSeatState(event);
@@ -514,6 +540,8 @@ module.exports = {
   rateEvent,
   serializeEvent,
   buildEventQuery,
+  syncEventPosterState,
+  syncEventPosterStateForList,
   syncEventSeatState,
 };
 
