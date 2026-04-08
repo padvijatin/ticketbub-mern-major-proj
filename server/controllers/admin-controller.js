@@ -330,7 +330,6 @@ const createEvent = async (req, res) => {
       return;
     }
 
-    console.log("createEvent req.file:", req.file);
 
     const role = getUserRole(req.user);
     const payload = buildEventPayload({
@@ -353,7 +352,6 @@ const createEvent = async (req, res) => {
     await event.save();
     await event.populate("organizer", "username email");
 
-    console.log("createEvent saved poster:", event.poster);
 
     return res.status(201).json({
       message: "Event created successfully",
@@ -389,7 +387,6 @@ const updateEvent = async (req, res) => {
       return;
     }
 
-    console.log("updateEvent req.file:", req.file);
 
     const role = getUserRole(req.user);
     const query = role === "organizer" ? { _id: req.params.id, organizer: req.user._id } : { _id: req.params.id };
@@ -417,7 +414,6 @@ const updateEvent = async (req, res) => {
     await event.save();
     await event.populate("organizer", "username email");
 
-    console.log("updateEvent saved poster:", event.poster);
 
     const nextPoster = String(event.poster || "").trim();
     if (previousPoster && previousPoster !== nextPoster) {

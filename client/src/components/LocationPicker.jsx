@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { Building2, ChevronDown, MapPin, Navigation, Search, X } from "lucide-react";
 import { matchesLocationSearch, useLocationStore } from "../store/location.jsx";
 
