@@ -1,4 +1,4 @@
-﻿import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useAuth } from "./auth.jsx";
 
@@ -18,8 +18,7 @@ const readStoredWishlist = () => {
 
     const parsedValue = JSON.parse(storedValue);
     return Array.isArray(parsedValue) ? parsedValue : [];
-  } catch (error) {
-    console.error("Unable to read wishlist", error);
+  } catch {
     return [];
   }
 };
@@ -95,9 +94,7 @@ export const WishlistProvider = ({ children }) => {
         if (!ignore) {
           setWishlistItems(items);
         }
-      } catch (error) {
-        console.error("Unable to hydrate wishlist", error);
-
+      } catch {
         if (!ignore) {
           setWishlistItems(guestWishlist);
         }
@@ -164,8 +161,7 @@ export const WishlistProvider = ({ children }) => {
 
         await refreshWishlist();
         return !alreadyWishlisted;
-      } catch (error) {
-        console.error("Unable to update wishlist", error);
+      } catch {
         return alreadyWishlisted;
       }
     },
@@ -183,8 +179,7 @@ export const WishlistProvider = ({ children }) => {
       await axios.delete(wishlistApiUrl, buildAuthConfig(authorizationToken));
       setWishlistItems([]);
       return true;
-    } catch (error) {
-      console.error("Unable to clear wishlist", error);
+    } catch {
       return false;
     }
   }, [authorizationToken, isLoggedIn]);

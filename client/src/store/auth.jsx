@@ -58,8 +58,7 @@ export const AuthProvider = ({ children }) => {
           }
         );
       }
-    } catch (error) {
-      console.error("Logout request failed", error);
+    } catch {
     } finally {
       clearAuth();
     }

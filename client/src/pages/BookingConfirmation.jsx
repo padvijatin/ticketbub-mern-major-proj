@@ -64,8 +64,7 @@ export const BookingConfirmation = () => {
       link.href = dataUrl;
       link.download = `TicketHub-${bookingId}.png`;
       link.click();
-    } catch (error) {
-      console.error("ticket-download-failed", error);
+    } catch {
       toast.error("Unable to download ticket right now");
     } finally {
       setIsDownloading(false);
