@@ -82,15 +82,54 @@ const parseBoolean = (value, fallback = false) => {
 };
 
 const parseSeatZones = (value, existingSeatZones = []) => {
+  const normalizeZoneRows = (rowsValue) => {
+    if (Array.isArray(rowsValue)) {
+      return rowsValue.map((row) => String(row).trim().toUpperCase()).filter(Boolean);
+    }
+
+    if (typeof rowsValue === "string") {
+      return rowsValue
+        .split(",")
+        .map((row) => row.trim().toUpperCase())
+        .filter(Boolean);
+    }
+
+    return [];
+  };
+
+  const normalizeSeatZones = (seatZones = []) =>
+    seatZones
+      .map((zone) => {
+        const rows = normalizeZoneRows(zone?.rows);
+        const seatsPerRow = Math.max(0, parseNumber(zone?.seatsPerRow, 0) || 0);
+        const totalSeats = Math.max(0, parseNumber(zone?.totalSeats, 0) || 0);
+        const hasRowLayout = rows.length > 0 && seatsPerRow > 0;
+        const hasSequentialLayout = totalSeats > 0;
+
+        if (!hasRowLayout && !hasSequentialLayout) {
+          return null;
+        }
+
+        return {
+          sectionGroup: String(zone?.sectionGroup || "").trim(),
+          name: String(zone?.name || "").trim(),
+          price: Math.max(0, parseNumber(zone?.price, 0) || 0),
+          rows,
+          seatsPerRow,
+          totalSeats,
+        };
+      })
+      .filter((zone) => zone && zone.name && zone.price > 0);
+
   if (Array.isArray(value)) {
-    return value;
+    return normalizeSeatZones(value);
   }
 
   if (typeof value === "string" && value.trim()) {
     try {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) {
-        return parsed;
+        return normalizeSeatZones(parsed);
       }
     } catch (_error) {
       return existingSeatZones;
@@ -149,9 +188,58 @@ const buildEventPayload = ({ input = {}, req, existingEvent = null, userRole = "
       ? requestedStatus
       : "pending"
     : existingEvent?.status || "pending";
+  if (userRole === "admin") {
+    payload.isActive = payload.status === "approved" ? parseBoolean(input.isActive, existingEvent?.isActive ?? true) : false;
+  } else if (!existingEvent) {
+    payload.status = "pending";
+    payload.isActive = false;
+  } else if (payload.status !== "approved") {
+    payload.isActive = false;
+  } else {
+    payload.isActive = existingEvent?.isActive ?? true;
+  }
   payload.organizer = existingEvent?.organizer?._id || existingEvent?.organizer || userId || null;
 
   return payload;
+};
+
+const serializeManagedEvent = (event) => {
+  const serializedEvent = serializeEvent(event.toObject ? event.toObject() : event, {}, {});
+  const totalSeats = Math.max(0, Number(serializedEvent.totalSeats || 0));
+  const availableSeats = Math.max(0, Number(serializedEvent.availableSeats || 0));
+  const bookedSeatCount = Math.max(0, totalSeats - availableSeats);
+
+  return {
+    ...serializedEvent,
+    bookedSeatCount,
+    inventory: {
+      totalSeats,
+      availableSeats,
+      bookedSeats: bookedSeatCount,
+    },
+    seatZones: (serializedEvent.seatZones || []).map((zone) => {
+      const zoneTotalSeats = Math.max(0, Number(zone.totalSeats || 0));
+      const zoneAvailableSeats = Math.max(0, Number(zone.availableSeats || 0));
+
+      return {
+        ...zone,
+        bookedSeats: Math.max(0, zoneTotalSeats - zoneAvailableSeats),
+      };
+    }),
+    status: String(event.status || "pending"),
+    address: event.address || "",
+    state: event.state || "",
+    latitude: event.latitude ?? null,
+    longitude: event.longitude ?? null,
+    isActive: Boolean(event.isActive),
+    organizer: event.organizer
+      ? {
+          id: event.organizer._id?.toString?.() || "",
+          username: event.organizer.username || "",
+          email: event.organizer.email || "",
+        }
+      : null,
+  };
 };
 
 const serializeAdminBooking = (booking) => ({
@@ -301,22 +389,7 @@ const listEvents = async (req, res) => {
     const events = await Event.find(getAccessibleEventFilter(req)).sort({ createdAt: -1, date: 1 }).populate("organizer", "username email");
     await syncEventPosterStateForList(events);
     return res.status(200).json({
-      events: events.map((event) => ({
-        ...serializeEvent(event.toObject(), {}, {}),
-        status: String(event.status || "pending"),
-        address: event.address || "",
-        state: event.state || "",
-        latitude: event.latitude ?? null,
-        longitude: event.longitude ?? null,
-        isActive: Boolean(event.isActive),
-        organizer: event.organizer
-          ? {
-              id: event.organizer._id?.toString?.() || "",
-              username: event.organizer.username || "",
-              email: event.organizer.email || "",
-            }
-          : null,
-      })),
+      events: events.map(serializeManagedEvent),
     });
   } catch (error) {
     console.error("events-list-failed", error);
@@ -345,6 +418,7 @@ const createEvent = async (req, res) => {
 
     if (role === "organizer") {
       payload.status = "pending";
+      payload.isActive = false;
     }
 
     const event = await Event.create(payload);
@@ -355,22 +429,7 @@ const createEvent = async (req, res) => {
 
     return res.status(201).json({
       message: "Event created successfully",
-      event: {
-        ...serializeEvent(event.toObject(), {}, {}),
-        status: event.status,
-        address: event.address || "",
-        state: event.state || "",
-        latitude: event.latitude ?? null,
-        longitude: event.longitude ?? null,
-        isActive: Boolean(event.isActive),
-        organizer: event.organizer
-          ? {
-              id: event.organizer._id?.toString?.() || "",
-              username: event.organizer.username || "",
-              email: event.organizer.email || "",
-            }
-          : null,
-      },
+      event: serializeManagedEvent(event),
     });
   } catch (error) {
     if (req.file?.path) {
@@ -422,22 +481,7 @@ const updateEvent = async (req, res) => {
 
     return res.status(200).json({
       message: "Event updated successfully",
-      event: {
-        ...serializeEvent(event.toObject(), {}, {}),
-        status: event.status,
-        address: event.address || "",
-        state: event.state || "",
-        latitude: event.latitude ?? null,
-        longitude: event.longitude ?? null,
-        isActive: Boolean(event.isActive),
-        organizer: event.organizer
-          ? {
-              id: event.organizer._id?.toString?.() || "",
-              username: event.organizer.username || "",
-              email: event.organizer.email || "",
-            }
-          : null,
-      },
+      event: serializeManagedEvent(event),
     });
   } catch (error) {
     if (req.file?.path) {

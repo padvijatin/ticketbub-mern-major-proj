@@ -321,12 +321,12 @@ const BookingManagement = ({ role = "admin" }) => {
 
       {selectedBooking ? (
         <div
-          className="fixed inset-0 z-[1300] bg-[rgba(28,28,28,0.35)] px-[1.6rem] py-[4rem]"
+          className="fixed inset-0 z-[1300] overflow-y-auto bg-[rgba(28,28,28,0.35)] px-[1.2rem] py-[1.6rem] md:px-[1.6rem] md:py-[4rem]"
           onClick={() => setSelectedBooking(null)}
         >
-          <div className="flex min-h-full items-start justify-center">
+          <div className="flex min-h-full items-center justify-center">
             <div
-              className="w-full max-w-[64rem] rounded-[2.2rem] bg-white p-[2.4rem] shadow-[0_24px_54px_rgba(28,28,28,0.18)]"
+              className="max-h-[calc(100vh-3.2rem)] w-full max-w-[64rem] overflow-y-auto rounded-[2.2rem] bg-white p-[1.6rem] shadow-[0_24px_54px_rgba(28,28,28,0.18)] md:p-[2.4rem]"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-[1rem]">
@@ -358,7 +358,7 @@ const BookingManagement = ({ role = "admin" }) => {
                 </div>
               </div>
 
-              <div className="mt-[2.4rem] grid gap-x-[4rem] gap-y-[2.2rem] sm:grid-cols-2">
+              <div className="mt-[2rem] grid gap-x-[2rem] gap-y-[1.6rem] sm:mt-[2.4rem] sm:gap-x-[4rem] sm:gap-y-[2.2rem] sm:grid-cols-2">
                 {[
                   ["Customer", selectedBooking.user?.username || selectedBooking.user?.email || "Unknown"],
                   ["Event", selectedBooking.event?.title || "Event unavailable"],
@@ -376,7 +376,7 @@ const BookingManagement = ({ role = "admin" }) => {
                 ].map(([label, value]) => (
                   <div key={label}>
                     <p className="text-[1.3rem] text-[var(--color-text-secondary)]">{label}</p>
-                    <p className="mt-[0.4rem] text-[1.8rem] leading-[1.35] text-[var(--color-text-primary)]">{value}</p>
+                    <p className="mt-[0.4rem] break-words text-[1.6rem] leading-[1.35] text-[var(--color-text-primary)] sm:text-[1.8rem]">{value}</p>
                   </div>
                 ))}
               </div>

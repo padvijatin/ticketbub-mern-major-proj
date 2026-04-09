@@ -15,9 +15,47 @@ const createSeatZone = () => ({
   sectionGroup: "",
   name: "",
   price: "",
+  totalSeats: "",
   rows: "",
   seatsPerRow: "",
 });
+
+const categorySuggestions = [
+  "Sports",
+  "Movies",
+  "Concert",
+  "Comedy",
+  "Theatre",
+  "Festival",
+  "Workshop",
+];
+
+const seatZonePresets = {
+  sports: [
+    { sectionGroup: "Pitch", name: "North Lower", price: "1499", totalSeats: "180", rows: "", seatsPerRow: "" },
+    { sectionGroup: "Pitch", name: "East Stand", price: "1899", totalSeats: "220", rows: "", seatsPerRow: "" },
+    { sectionGroup: "Pitch", name: "South Lower", price: "1699", totalSeats: "180", rows: "", seatsPerRow: "" },
+    { sectionGroup: "Pitch", name: "West Premium", price: "2499", totalSeats: "140", rows: "", seatsPerRow: "" },
+  ],
+  movie: [
+    { sectionGroup: "Screening", name: "Premium", price: "499", totalSeats: "", rows: "A, B", seatsPerRow: "12" },
+    { sectionGroup: "Screening", name: "Classic", price: "349", totalSeats: "", rows: "C, D, E", seatsPerRow: "12" },
+    { sectionGroup: "Screening", name: "Saver", price: "249", totalSeats: "", rows: "F, G", seatsPerRow: "12" },
+  ],
+  event: [
+    { sectionGroup: "Stage", name: "Fan Pit", price: "2499", totalSeats: "160", rows: "", seatsPerRow: "" },
+    { sectionGroup: "Stage", name: "Gold Circle", price: "1799", totalSeats: "220", rows: "", seatsPerRow: "" },
+    { sectionGroup: "Stage", name: "Regular", price: "999", totalSeats: "260", rows: "", seatsPerRow: "" },
+  ],
+};
+
+const getPresetTypeFromCategory = (categoryValue = "") => {
+  const normalizedValue = String(categoryValue).trim().toLowerCase();
+  if (!normalizedValue) return "event";
+  if (/(movie|film|cinema)/i.test(normalizedValue)) return "movie";
+  if (/(sport|cricket|football|match|league|ipl|cup|tournament|stadium)/i.test(normalizedValue)) return "sports";
+  return "event";
+};
 
 const initialFormState = {
   title: "",
@@ -83,6 +121,7 @@ const eventToFormState = (event) => ({
         sectionGroup: zone.sectionGroup || "",
         name: zone.name || "",
         price: zone.price || "",
+        totalSeats: zone.totalSeats || "",
         rows: (zone.rows || []).join(", "),
         seatsPerRow: zone.seatsPerRow || "",
       }))
@@ -117,18 +156,132 @@ const buildPayload = (formState, role) => ({
       sectionGroup: zone.sectionGroup.trim(),
       name: zone.name.trim(),
       price: Number(zone.price || 0),
+      totalSeats: Number(zone.totalSeats || 0),
       rows: zone.rows
         .split(",")
         .map((item) => item.trim().toUpperCase())
         .filter(Boolean),
       seatsPerRow: Number(zone.seatsPerRow || 0),
     }))
-    .filter((zone) => zone.name && zone.price > 0 && zone.rows.length && zone.seatsPerRow > 0),
+    .filter(
+      (zone) =>
+        zone.name &&
+        zone.price > 0 &&
+        ((zone.rows.length && zone.seatsPerRow > 0) || zone.totalSeats > 0)
+    ),
 });
 
 const formInputClassName = "h-[4.6rem] rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] bg-white px-[1.2rem] text-[1.35rem] outline-none";
+const requiredFieldLabelClassName = "after:ml-[0.25rem] after:text-[var(--color-error)] after:content-['*']";
 const formTextareaClassName = "rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] bg-white px-[1.2rem] py-[1rem] text-[1.35rem] outline-none";
 const categoryChipClassName = "inline-flex rounded-full bg-[rgba(28,28,28,0.06)] px-[0.95rem] py-[0.38rem] text-[1.15rem] font-semibold text-[var(--color-text-primary)]";
+
+const parseNumberOrNull = (value) => {
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const isValidEventDate = (value) => {
+  const parsedDate = new Date(value);
+  return !Number.isNaN(parsedDate.getTime());
+};
+
+const validateFormState = (formState) => {
+  const globalErrors = [];
+  const fieldErrors = {};
+  const seatZoneErrors = {};
+  const normalizedTitle = formState.title.trim();
+  const normalizedCategory = formState.category.trim();
+  const normalizedVenue = formState.venue.trim();
+  const normalizedCity = formState.city.trim();
+  const normalizedPrice = Number(formState.price || 0);
+  const latitude = parseNumberOrNull(formState.latitude);
+  const longitude = parseNumberOrNull(formState.longitude);
+
+  if (!normalizedTitle) fieldErrors.title = "Title is required.";
+  if (!normalizedCategory) fieldErrors.category = "Category is required.";
+  if (!normalizedVenue) fieldErrors.venue = "Venue is required.";
+  if (!normalizedCity) fieldErrors.city = "City is required.";
+
+  if (!formState.date || !isValidEventDate(formState.date)) {
+    fieldErrors.date = "Please provide a valid date and time.";
+  }
+
+  if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) {
+    fieldErrors.price = "Starting price must be greater than 0.";
+  }
+
+  if (latitude !== null && (latitude < -90 || latitude > 90)) {
+    fieldErrors.latitude = "Latitude must be between -90 and 90.";
+  }
+
+  if (longitude !== null && (longitude < -180 || longitude > 180)) {
+    fieldErrors.longitude = "Longitude must be between -180 and 180.";
+  }
+
+  const normalizedZones = formState.seatZones.map((zone, zoneIndex) => {
+      const rows = zone.rows
+        .split(",")
+        .map((item) => item.trim().toUpperCase())
+        .filter(Boolean);
+      const seatsPerRow = Number(zone.seatsPerRow || 0);
+      const totalSeats = Number(zone.totalSeats || 0);
+      const zonePrice = Number(zone.price || 0);
+      const zoneName = zone.name.trim();
+
+      const zoneError = {};
+
+      if (!zoneName) zoneError.name = "Zone name is required.";
+      if (!Number.isFinite(zonePrice) || zonePrice <= 0) zoneError.price = "Zone price must be greater than 0.";
+      if (rows.length > 0 && (!Number.isFinite(seatsPerRow) || seatsPerRow <= 0)) {
+        zoneError.seatsPerRow = "Seats per row must be greater than 0 when rows are set.";
+      }
+      if ((!rows.length || !seatsPerRow) && (!Number.isFinite(totalSeats) || totalSeats <= 0)) {
+        zoneError.totalSeats = "Add total seats or complete rows + seats per row.";
+      }
+
+      if (Object.keys(zoneError).length) {
+        seatZoneErrors[zoneIndex] = zoneError;
+      }
+
+      return {
+        zoneIndex,
+        zoneName,
+        zonePrice,
+        rows,
+        seatsPerRow,
+        totalSeats,
+        isValid: Boolean(
+          zoneName &&
+            zonePrice > 0 &&
+            ((rows.length > 0 && seatsPerRow > 0) || totalSeats > 0)
+        ),
+      };
+    });
+
+  const validSeatZones = normalizedZones.filter((zone) => zone.isValid);
+
+  if (!validSeatZones.length) {
+    globalErrors.push("Add at least one valid seat zone with price and seat capacity.");
+  }
+
+  const zoneNames = validSeatZones.map((zone) => zone.zoneName.toLowerCase());
+  if (new Set(zoneNames).size !== zoneNames.length) {
+    globalErrors.push("Seat zone names must be unique.");
+  }
+
+  return {
+    globalErrors,
+    fieldErrors,
+    seatZoneErrors,
+  };
+};
+
+const requiredFieldSet = new Set(["title", "category", "venue", "city", "date", "price"]);
 
 const EventManagement = ({ role }) => {
   const queryClient = useQueryClient();
@@ -140,6 +293,12 @@ const EventManagement = ({ role }) => {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [previewEvent, setPreviewEvent] = useState(null);
   const [imageLoadErrors, setImageLoadErrors] = useState({});
+  const [formErrors, setFormErrors] = useState({
+    globalErrors: [],
+    fieldErrors: {},
+    seatZoneErrors: {},
+  });
+  const [isSubmitAttempted, setIsSubmitAttempted] = useState(false);
   const { data: events = [], isLoading, isError } = useQuery({
     queryKey: ["admin-events", authorizationToken, role],
     queryFn: () => getAdminEvents(authorizationToken),
@@ -179,6 +338,12 @@ const EventManagement = ({ role }) => {
 
   const resetForm = () => {
     setFormState(initialFormState);
+    setFormErrors({
+      globalErrors: [],
+      fieldErrors: {},
+      seatZoneErrors: {},
+    });
+    setIsSubmitAttempted(false);
     setEditingEventId("");
     setIsFormOpen(false);
   };
@@ -217,6 +382,26 @@ const EventManagement = ({ role }) => {
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Unable to update event right now");
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ eventId, status }) =>
+      updateAdminEvent({
+        authorizationToken,
+        eventId,
+        payload: {
+          status,
+          isActive: status === "approved",
+        },
+      }),
+    onSuccess: (updatedEvent, variables) => {
+      mergeEventIntoCache(updatedEvent);
+      toast.success(variables.status === "approved" ? "Event approved successfully" : "Event rejected");
+      invalidateManagementQueries();
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Unable to update event status right now");
     },
   });
 
@@ -279,8 +464,22 @@ const EventManagement = ({ role }) => {
       return nextState;
     });
     setFormState(eventToFormState(event));
+    setFormErrors({
+      globalErrors: [],
+      fieldErrors: {},
+      seatZoneErrors: {},
+    });
+    setIsSubmitAttempted(false);
     setIsFormOpen(true);
   };
+
+  useEffect(() => {
+    if (!isFormOpen) {
+      return;
+    }
+
+    setFormErrors(validateFormState(formState));
+  }, [formState, isFormOpen]);
 
   const getPosterSrc = (event) => {
     if (!event) return fallbackPosterImage;
@@ -289,6 +488,19 @@ const EventManagement = ({ role }) => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    setIsSubmitAttempted(true);
+    const validationResult = validateFormState(formState);
+    setFormErrors(validationResult);
+
+    if (
+      validationResult.globalErrors.length ||
+      Object.keys(validationResult.fieldErrors).length ||
+      Object.keys(validationResult.seatZoneErrors).length
+    ) {
+      toast.error(validationResult.globalErrors[0] || Object.values(validationResult.fieldErrors)[0] || "Please fix highlighted form errors.");
+      return;
+    }
+
     const payload = buildPayload(formState, role);
 
     if (editingEventId) {
@@ -315,6 +527,14 @@ const EventManagement = ({ role }) => {
       hour: "numeric",
       minute: "2-digit",
     });
+  };
+
+  const applySeatZonePreset = (presetType) => {
+    const selectedPreset = seatZonePresets[presetType] || seatZonePresets.event;
+    setFormState((current) => ({
+      ...current,
+      seatZones: selectedPreset.map((zone) => ({ ...zone })),
+    }));
   };
 
   return (
@@ -380,7 +600,6 @@ const EventManagement = ({ role }) => {
             <div className="grid gap-[1.2rem] md:grid-cols-2 xl:grid-cols-3">
               {[
                 ["title", "Title"],
-                ["category", "Category"],
                 ["venue", "Venue"],
                 ["address", "Address"],
                 ["city", "City"],
@@ -396,15 +615,39 @@ const EventManagement = ({ role }) => {
                 ["tags", "Tags (comma separated)"],
               ].map(([field, label, type]) => (
                 <label key={field} className="grid gap-[0.5rem] text-[1.25rem] font-semibold text-[var(--color-text-primary)]">
-                  {label}
+                  <span className={requiredFieldSet.has(field) ? requiredFieldLabelClassName : ""}>{label}</span>
                   <input
                     type={type || "text"}
                     value={formState[field]}
                     onChange={(eventObject) => setFormState((current) => ({ ...current, [field]: eventObject.target.value }))}
+                    min={field === "price" || field === "seatsPerRow" || field === "totalSeats" ? 0 : undefined}
+                    step={field === "latitude" || field === "longitude" ? "any" : undefined}
                     className={formInputClassName}
                   />
+                  {isSubmitAttempted && formErrors.fieldErrors[field] ? (
+                    <span className="text-[1.1rem] font-medium text-[var(--color-error)]">{formErrors.fieldErrors[field]}</span>
+                  ) : null}
                 </label>
               ))}
+
+              <label className="grid gap-[0.5rem] text-[1.25rem] font-semibold text-[var(--color-text-primary)]">
+                <span className={requiredFieldLabelClassName}>Category</span>
+                <input
+                  type="text"
+                  list="event-category-suggestions"
+                  value={formState.category}
+                  onChange={(eventObject) => setFormState((current) => ({ ...current, category: eventObject.target.value }))}
+                  className={formInputClassName}
+                />
+                <datalist id="event-category-suggestions">
+                  {categorySuggestions.map((categoryOption) => (
+                    <option key={categoryOption} value={categoryOption} />
+                  ))}
+                </datalist>
+                {isSubmitAttempted && formErrors.fieldErrors.category ? (
+                  <span className="text-[1.1rem] font-medium text-[var(--color-error)]">{formErrors.fieldErrors.category}</span>
+                ) : null}
+              </label>
 
               {role === "admin" ? (
                 <label className="grid gap-[0.5rem] text-[1.25rem] font-semibold text-[var(--color-text-primary)]">
@@ -428,17 +671,26 @@ const EventManagement = ({ role }) => {
                 </div>
               )}
 
-              <label className="grid gap-[0.65rem] text-[1.25rem] font-semibold text-[var(--color-text-primary)]">
-                Active Listing
-                <select
-                  value={formState.isActive ? "true" : "false"}
-                  onChange={(eventObject) => setFormState((current) => ({ ...current, isActive: eventObject.target.value === "true" }))}
-                  className={formInputClassName}
-                >
-                  <option value="true">Active</option>
-                  <option value="false">Archived</option>
-                </select>
-              </label>
+              {role === "admin" ? (
+                <label className="grid gap-[0.65rem] text-[1.25rem] font-semibold text-[var(--color-text-primary)]">
+                  Active Listing
+                  <select
+                    value={formState.isActive ? "true" : "false"}
+                    onChange={(eventObject) => setFormState((current) => ({ ...current, isActive: eventObject.target.value === "true" }))}
+                    className={formInputClassName}
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Archived</option>
+                  </select>
+                </label>
+              ) : (
+                <div className="grid gap-[0.5rem] text-[1.25rem] font-semibold text-[var(--color-text-primary)]">
+                  Listing Visibility
+                  <div className="flex h-[4.6rem] items-center rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] bg-white px-[1.2rem] text-[1.3rem] text-[var(--color-text-secondary)]">
+                    Organizer events stay inactive until admin approval.
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid gap-[1.2rem] lg:grid-cols-[minmax(0,1.2fr)_28rem]">
@@ -520,30 +772,45 @@ const EventManagement = ({ role }) => {
                 <div>
                   <h3 className="text-[1.5rem] font-bold text-[var(--color-text-primary)]">Seat Zones</h3>
                   <p className="mt-[0.35rem] text-[1.15rem] text-[var(--color-text-secondary)]">
-                    Add each section with price, rows, and seats per row. Total seats are calculated automatically.
+                    Add each section with price and capacity. Use open seating (`totalSeats`) or row-based layout (`rows + seatsPerRow`).
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setFormState((current) => ({ ...current, seatZones: [...current.seatZones, createSeatZone()] }))}
-                  className="inline-flex items-center gap-[0.5rem] rounded-[1rem] border border-[rgba(28,28,28,0.08)] px-[1rem] py-[0.7rem] text-[1.15rem] font-semibold text-[var(--color-text-primary)]"
-                >
-                  <Plus className="h-[1.4rem] w-[1.4rem]" /> Add zone
-                </button>
+                <div className="flex flex-wrap items-center gap-[0.6rem]">
+                  <button
+                    type="button"
+                    onClick={() => applySeatZonePreset(getPresetTypeFromCategory(formState.category))}
+                    className="inline-flex items-center gap-[0.5rem] rounded-[1rem] border border-[rgba(28,28,28,0.08)] px-[1rem] py-[0.7rem] text-[1.15rem] font-semibold text-[var(--color-text-primary)]"
+                  >
+                    Use Suggested Layout
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormState((current) => ({ ...current, seatZones: [...current.seatZones, createSeatZone()] }))}
+                    className="inline-flex items-center gap-[0.5rem] rounded-[1rem] border border-[rgba(28,28,28,0.08)] px-[1rem] py-[0.7rem] text-[1.15rem] font-semibold text-[var(--color-text-primary)]"
+                  >
+                    <Plus className="h-[1.4rem] w-[1.4rem]" /> Add zone
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-[1rem]">
+                {isSubmitAttempted && formErrors.globalErrors.length ? (
+                  <div className="rounded-[1rem] border border-[rgba(239,68,68,0.2)] bg-[rgba(239,68,68,0.06)] px-[1rem] py-[0.8rem] text-[1.15rem] font-medium text-[var(--color-error)]">
+                    {formErrors.globalErrors[0]}
+                  </div>
+                ) : null}
                 {formState.seatZones.map((zone, zoneIndex) => (
-                  <div key={`${zoneIndex}-${zone.name}`} className="grid gap-[1rem] rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] p-[1rem] md:grid-cols-2 xl:grid-cols-5">
+                  <div key={`${zoneIndex}-${zone.name}`} className="grid gap-[1rem] rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] p-[1rem] md:grid-cols-2 xl:grid-cols-6">
                     {[
                       ["sectionGroup", "Group"],
                       ["name", "Zone Name"],
                       ["price", "Zone Price", "number"],
+                      ["totalSeats", "Total Seats (for open seating)", "number"],
                       ["rows", "Rows (comma separated)"],
                       ["seatsPerRow", "Seats / Row", "number"],
                     ].map(([field, label, type]) => (
                       <label key={field} className="grid gap-[0.4rem] text-[1.15rem] font-semibold text-[var(--color-text-primary)]">
-                        {label}
+                        <span className={field === "name" || field === "price" ? requiredFieldLabelClassName : ""}>{label}</span>
                         <input
                           type={type || "text"}
                           value={zone[field]}
@@ -555,11 +822,17 @@ const EventManagement = ({ role }) => {
                               ),
                             }))
                           }
+                          min={field === "price" || field === "seatsPerRow" || field === "totalSeats" ? 0 : undefined}
                           className={formInputClassName}
                         />
+                        {isSubmitAttempted && formErrors.seatZoneErrors[zoneIndex]?.[field] ? (
+                          <span className="text-[1.05rem] font-medium text-[var(--color-error)]">
+                            {formErrors.seatZoneErrors[zoneIndex][field]}
+                          </span>
+                        ) : null}
                       </label>
                     ))}
-                    <div className="flex items-end justify-end md:col-span-2 xl:col-span-5">
+                    <div className="flex items-end justify-end md:col-span-2 xl:col-span-6">
                       <button
                         type="button"
                         onClick={() =>
@@ -636,6 +909,11 @@ const EventManagement = ({ role }) => {
                         <span className="inline-flex rounded-full bg-[rgba(248,68,100,0.12)] px-[1rem] py-[0.45rem] text-[1.15rem] font-semibold text-[var(--color-primary)]">
                           {event.status === "approved" ? "Published" : event.status}
                         </span>
+                        {role === "organizer" && event.status === "pending" ? (
+                          <span className="inline-flex rounded-full bg-[rgba(245,158,11,0.16)] px-[1rem] py-[0.45rem] text-[1.15rem] font-semibold text-[rgb(146,64,14)]">
+                            Pending Approval
+                          </span>
+                        ) : null}
                         {!event.isActive ? (
                           <span className="inline-flex rounded-full bg-[rgba(28,28,28,0.08)] px-[1rem] py-[0.45rem] text-[1.15rem] font-semibold text-[var(--color-text-secondary)]">
                             Archived
@@ -652,6 +930,12 @@ const EventManagement = ({ role }) => {
                         <span className="text-[1.25rem] text-[var(--color-text-secondary)]">
                           Capacity: {event.totalSeats || 0}
                         </span>
+                        <span className="text-[1.25rem] text-[var(--color-text-secondary)]">
+                          Available: {event.availableSeats || 0}
+                        </span>
+                        <span className="text-[1.25rem] text-[var(--color-text-secondary)]">
+                          Booked: {Math.max(0, Number(event.totalSeats || 0) - Number(event.availableSeats || 0))}
+                        </span>
                         {role === "admin" && event.organizer ? (
                           <span className="text-[1.25rem] text-[var(--color-text-secondary)]">
                             Organizer: {event.organizer.username || event.organizer.email}
@@ -667,6 +951,26 @@ const EventManagement = ({ role }) => {
                     </p>
 
                     <div className="flex items-center gap-[0.5rem]">
+                      {role === "admin" && event.status !== "approved" ? (
+                        <button
+                          type="button"
+                          onClick={() => updateStatusMutation.mutate({ eventId: event.id, status: "approved" })}
+                          disabled={updateStatusMutation.isPending}
+                          className="rounded-[0.9rem] border border-[rgba(34,197,94,0.2)] bg-[rgba(34,197,94,0.12)] px-[0.9rem] py-[0.45rem] text-[1.15rem] font-semibold text-[rgb(21,128,61)] disabled:opacity-60"
+                        >
+                          Approve
+                        </button>
+                      ) : null}
+                      {role === "admin" && event.status !== "rejected" ? (
+                        <button
+                          type="button"
+                          onClick={() => updateStatusMutation.mutate({ eventId: event.id, status: "rejected" })}
+                          disabled={updateStatusMutation.isPending}
+                          className="rounded-[0.9rem] border border-[rgba(239,68,68,0.2)] bg-[rgba(239,68,68,0.1)] px-[0.9rem] py-[0.45rem] text-[1.15rem] font-semibold text-[rgb(185,28,28)] disabled:opacity-60"
+                        >
+                          Reject
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => setPreviewEvent(event)}
@@ -708,10 +1012,10 @@ const EventManagement = ({ role }) => {
       </div>
 
       {previewEvent ? (
-        <div className="fixed inset-0 z-[1300] bg-[rgba(28,28,28,0.35)] px-[1.6rem] py-[4rem]" onClick={() => setPreviewEvent(null)}>
-          <div className="flex min-h-full items-start justify-center">
+        <div className="fixed inset-0 z-[1300] overflow-y-auto bg-[rgba(28,28,28,0.35)] px-[1.2rem] py-[1.6rem] md:px-[1.6rem] md:py-[4rem]" onClick={() => setPreviewEvent(null)}>
+          <div className="flex min-h-full items-center justify-center">
             <div
-              className="w-full max-w-[72rem] rounded-[2.2rem] bg-white p-[2.4rem] shadow-[0_24px_54px_rgba(28,28,28,0.18)]"
+              className="max-h-[calc(100vh-3.2rem)] w-full max-w-[72rem] overflow-y-auto rounded-[2.2rem] bg-white p-[1.6rem] shadow-[0_24px_54px_rgba(28,28,28,0.18)] md:p-[2.4rem]"
               onClick={(eventObject) => eventObject.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-[1rem]">
@@ -729,7 +1033,7 @@ const EventManagement = ({ role }) => {
                 <PosterImage
                   src={getPosterSrc(previewEvent)}
                   alt={previewEvent.title}
-                  className="h-[20rem] w-full object-cover"
+                  className="h-[16rem] w-full object-cover sm:h-[18rem] md:h-[20rem]"
                   onError={() =>
                     setImageLoadErrors((current) => ({
                       ...current,
@@ -759,6 +1063,8 @@ const EventManagement = ({ role }) => {
                   ["Venue", previewEvent.venue || "-"],
                   ["City", previewEvent.city || "-"],
                   ["Capacity", String(previewEvent.totalSeats || 0)],
+                  ["Available Seats", String(previewEvent.availableSeats || 0)],
+                  ["Booked Seats", String(Math.max(0, Number(previewEvent.totalSeats || 0) - Number(previewEvent.availableSeats || 0)))],
                   ["Organizer", previewEvent.organizer?.username || previewEvent.organizer?.email || "TicketHub"],
                 ].map(([label, value]) => (
                   <div key={label}>

@@ -5,7 +5,7 @@ dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 
 const connectDb = require("../utils/db");
 const Event = require("../models/event-model");
-const { buildZoneSeatIds } = require("../utils/seat-layout");
+const Booking = require("../models/booking-model");
 const { syncEventSeatState } = require("../controllers/event-controller");
 
 const movieLayouts = {
@@ -32,12 +32,15 @@ const run = async () => {
       };
     });
 
-    const allSeatIds = event.seatZones.flatMap((zone) => buildZoneSeatIds(zone));
-    const totalSeats = allSeatIds.length;
-    const targetAvailable = Math.max(0, Math.min(totalSeats, Number(event.availableSeats) || totalSeats));
-    const targetBookedCount = Math.max(0, totalSeats - targetAvailable);
-
-    event.bookedSeats = allSeatIds.slice(-targetBookedCount);
+    const bookings = await Booking.find({ event: event._id }).select("seats").lean();
+    event.bookedSeats = [
+      ...new Set(
+        bookings
+          .flatMap((booking) => (Array.isArray(booking.seats) ? booking.seats : []))
+          .map((seat) => String(seat).trim())
+          .filter(Boolean)
+      ),
+    ];
     syncEventSeatState(event);
     await event.save();
     updatedCount += 1;

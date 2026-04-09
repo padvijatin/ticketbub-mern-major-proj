@@ -142,8 +142,6 @@ const getPriceRange = (priceFilter) => {
   return null;
 };
 
-const clampSeatCount = (value, totalSeats) => Math.min(Math.max(0, Number(value) || 0), totalSeats);
-
 const createDefaultSeatZones = (contentType, basePrice) => {
   const safePrice = Number(basePrice) > 0 ? Number(basePrice) : 0;
   const blueprints = defaultSeatZoneBlueprints[contentType] || defaultSeatZoneBlueprints.event;
@@ -288,24 +286,10 @@ const normalizeBookedSeats = (bookedSeats = [], seatZones = []) => {
   return [...new Set((Array.isArray(bookedSeats) ? bookedSeats : []).map((seat) => String(seat).trim()).filter((seat) => validSeatIds.has(seat)))];
 };
 
-const getBookedSeatsFromAvailability = (seatZones = [], bookedSeats = [], availableSeats) => {
+const getBookedSeatsFromAvailability = (seatZones = [], bookedSeats = []) => {
   const normalizedBookedSeats = normalizeBookedSeats(bookedSeats, seatZones);
 
-  if (normalizedBookedSeats.length) {
-    return normalizedBookedSeats;
-  }
-
-  const allSeatIds = seatZones.flatMap((zone) => buildZoneSeatIds(zone));
-  const totalSeats = allSeatIds.length;
-  const requestedAvailableSeats = Number(availableSeats);
-
-  if (!Number.isFinite(requestedAvailableSeats) || requestedAvailableSeats < 0) {
-    return [];
-  }
-
-  const clampedAvailableSeats = clampSeatCount(requestedAvailableSeats, totalSeats);
-  const targetBookedCount = Math.max(0, totalSeats - clampedAvailableSeats);
-  return allSeatIds.slice(-targetBookedCount);
+  return normalizedBookedSeats;
 };
 
 const buildSerializedSeatZones = (seatZones = [], bookedSeats = []) =>
@@ -364,7 +348,7 @@ const syncEventPosterStateForList = async (events = []) => {
 const serializeEvent = (event, interestedCountMap = {}, reviewSummaryMap = {}, seatLocks = {}) => {
   const contentType = detectContentType(event.category);
   const normalizedSeatZones = normalizeSeatZones(event.seatZones, contentType, event.price);
-  const bookedSeats = getBookedSeatsFromAvailability(normalizedSeatZones, event.bookedSeats, event.availableSeats);
+  const bookedSeats = getBookedSeatsFromAvailability(normalizedSeatZones, event.bookedSeats);
   const seatZones = buildSerializedSeatZones(normalizedSeatZones, bookedSeats);
   const eventId = event._id.toString();
   const reviewSummary = reviewSummaryMap[eventId] || { averageRating: 0, totalRatings: 0 };
@@ -411,7 +395,7 @@ const serializeEvent = (event, interestedCountMap = {}, reviewSummaryMap = {}, s
 const syncEventSeatState = (event) => {
   const contentType = detectContentType(event.category);
   const normalizedSeatZones = normalizeSeatZones(event.seatZones, contentType, event.price);
-  const bookedSeats = getBookedSeatsFromAvailability(normalizedSeatZones, event.bookedSeats, event.availableSeats);
+  const bookedSeats = getBookedSeatsFromAvailability(normalizedSeatZones, event.bookedSeats);
   const seatZones = buildSerializedSeatZones(normalizedSeatZones, bookedSeats);
   const totalSeats = seatZones.reduce((sum, zone) => sum + zone.totalSeats, 0);
   const availableSeats = Math.max(0, totalSeats - bookedSeats.length);

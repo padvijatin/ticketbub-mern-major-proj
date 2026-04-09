@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Building2, ChevronDown, MapPin, Navigation, Search, X } from "lucide-react";
 import { matchesLocationSearch, useLocationStore } from "../store/location.jsx";
 
 export const LocationPicker = ({ mobile = false, onSelect }) => {
   const {
     allCities,
+    clearLocationFilter,
     chooseCity,
     detectCurrentLocation,
     isDetectingLocation,
@@ -56,9 +57,9 @@ export const LocationPicker = ({ mobile = false, onSelect }) => {
           exit={{ opacity: 0 }}
           onClick={() => setIsOpen(false)}
         >
-          <div className="flex min-h-full items-start justify-center overflow-y-auto px-[0.9rem] py-[5rem] sm:px-[1.6rem] sm:py-[8rem]">
+          <div className="flex min-h-full items-center justify-center overflow-y-auto px-[0.9rem] py-[1.2rem] sm:px-[1.6rem] sm:py-[2rem]">
             <motion.div
-              className="w-full max-w-[78rem] overflow-hidden rounded-[1.6rem] border border-[rgba(28,28,28,0.08)] bg-white shadow-[0_24px_64px_rgba(15,23,42,0.18)] sm:rounded-[2rem]"
+              className="max-h-[calc(100vh-2.4rem)] w-full max-w-[78rem] overflow-y-auto rounded-[1.6rem] border border-[rgba(28,28,28,0.08)] bg-white shadow-[0_24px_64px_rgba(15,23,42,0.18)] sm:max-h-[calc(100vh-4rem)] sm:rounded-[2rem]"
               initial={{ opacity: 0, y: 24, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -100,11 +101,31 @@ export const LocationPicker = ({ mobile = false, onSelect }) => {
                 </button>
               </div>
 
-              <div className="max-h-[calc(85vh-13rem)] overflow-y-auto border-t border-[rgba(28,28,28,0.08)] px-[1.2rem] py-[1.2rem] sm:max-h-[calc(85vh-14rem)] sm:px-[1.8rem] sm:py-[1.8rem]">
+              <div className="border-t border-[rgba(28,28,28,0.08)] px-[1.2rem] py-[1.2rem] sm:px-[1.8rem] sm:py-[1.8rem]">
                 <p className="text-center text-[1.25rem] font-bold text-[var(--color-text-secondary)]">
                   Popular Cities
                 </p>
                 <div className="mt-[1.1rem] grid grid-cols-1 gap-[0.7rem] min-[420px]:grid-cols-2 sm:mt-[1.3rem] sm:gap-[0.8rem] lg:grid-cols-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearLocationFilter();
+                      setIsOpen(false);
+                      setSearchValue("");
+                      onSelect?.();
+                    }}
+                    className="min-w-0 rounded-[1.3rem] border border-[rgba(28,28,28,0.12)] bg-[linear-gradient(180deg,rgba(28,28,28,0.02)_0%,rgba(28,28,28,0.01)_100%)] px-[0.85rem] py-[0.95rem] text-center transition-colors duration-200 hover:border-[rgba(28,28,28,0.24)] sm:rounded-[1.5rem] sm:px-[0.9rem] sm:py-[1rem]"
+                  >
+                    <span className="mx-auto inline-flex h-[3.6rem] w-[3.6rem] items-center justify-center rounded-[1.1rem] bg-[rgba(28,28,28,0.08)] text-[var(--color-text-primary)] sm:h-[4rem] sm:w-[4rem] sm:rounded-[1.2rem]">
+                      <MapPin className="h-[1.55rem] w-[1.55rem] sm:h-[1.7rem] sm:w-[1.7rem]" />
+                    </span>
+                    <span className="mt-[0.55rem] block break-words text-[1.18rem] font-bold leading-[1.2] text-[var(--color-text-primary)] sm:mt-[0.65rem] sm:text-[1.25rem]">
+                      All Cities
+                    </span>
+                    <span className="mt-[0.15rem] block break-words text-[0.92rem] leading-[1.2] text-[var(--color-text-secondary)] sm:text-[1rem]">
+                      Show all events
+                    </span>
+                  </button>
                   {popularCities.map((city) => (
                     <button
                       key={city.name}

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { getEvents } from "../utils/eventApi.js";
 
@@ -139,14 +139,32 @@ const otherCities = [
   { name: "Nandurbar", state: "Maharashtra" },
 ];
 
-const normalizeCity = (value = "") =>
-  String(value)
+const cityAliasMap = {
+  bangalore: "bengaluru",
+  bombay: "mumbai",
+  calcutta: "kolkata",
+  majura: "surat",
+};
+
+const cityCoordinatesMap = {
+  surat: { latitude: 21.1702, longitude: 72.8311 },
+  songadh: { latitude: 21.1667, longitude: 73.5667 },
+  vyara: { latitude: 21.1103, longitude: 73.3936 },
+  nizar: { latitude: 21.4761, longitude: 74.1892 },
+  nandurbar: { latitude: 21.3667, longitude: 74.25 },
+};
+
+const normalizeCity = (value = "") => {
+  const normalizedValue = String(value)
     .trim()
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ");
+
+  return cityAliasMap[normalizedValue] || normalizedValue;
+};
 
 export const matchesLocationSearch = (city, query) => {
   const normalizedQuery = normalizeCity(query);
@@ -165,14 +183,36 @@ export const matchesLocationSearch = (city, query) => {
 const readStoredLocation = () => {
   try {
     const storedValue = localStorage.getItem(STORAGE_KEY);
-    return storedValue ? JSON.parse(storedValue) : null;
+    if (!storedValue) {
+      return { location: null, isFilterEnabled: false };
+    }
+
+    const parsedValue = JSON.parse(storedValue);
+
+    if (parsedValue && typeof parsedValue === "object" && "location" in parsedValue) {
+      return {
+        location: parsedValue.location || null,
+        isFilterEnabled: Boolean(parsedValue.isFilterEnabled),
+      };
+    }
+
+    return {
+      location: parsedValue || null,
+      isFilterEnabled: false,
+    };
   } catch {
-    return null;
+    return { location: null, isFilterEnabled: false };
   }
 };
 
-const persistLocation = (location) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(location));
+const persistLocation = (location, isFilterEnabled) => {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      location,
+      isFilterEnabled,
+    })
+  );
 };
 
 const reverseGeocode = async (latitude, longitude) => {
@@ -191,7 +231,13 @@ const reverseGeocode = async (latitude, longitude) => {
 
   const data = await response.json();
   const address = data.address || {};
-  const city = address.city || address.town || address.county || address.state_district || address.village;
+  const city =
+    address.city ||
+    address.town ||
+    address.village ||
+    address.municipality ||
+    address.county ||
+    address.state_district;
   const state = address.state || address.region || "";
 
   if (!city) {
@@ -199,6 +245,21 @@ const reverseGeocode = async (latitude, longitude) => {
   }
 
   return { name: city, state, latitude, longitude, source: "auto" };
+};
+
+const toRadians = (value) => (Number(value) * Math.PI) / 180;
+
+const getDistanceInKm = (latitudeA, longitudeA, latitudeB, longitudeB) => {
+  const earthRadiusKm = 6371;
+  const deltaLatitude = toRadians(latitudeB - latitudeA);
+  const deltaLongitude = toRadians(longitudeB - longitudeA);
+  const a =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(toRadians(latitudeA)) *
+      Math.cos(toRadians(latitudeB)) *
+      Math.sin(deltaLongitude / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
 };
 
 const detectLocationByIp = async () => {
@@ -225,7 +286,44 @@ const detectLocationByIp = async () => {
 
 const mapCityToKnownOption = (city = {}, allCities = []) => {
   const normalizedName = normalizeCity(city.name);
-  const knownCity = allCities.find((option) => normalizeCity(option.name) === normalizedName);
+  const normalizedState = normalizeCity(city.state || "");
+  let knownCity =
+    allCities.find((option) => normalizeCity(option.name) === normalizedName) ||
+    allCities.find((option) => {
+      const optionCity = normalizeCity(option.name);
+      const optionState = normalizeCity(option.state || "");
+      const cityNameMatches = optionCity.includes(normalizedName) || normalizedName.includes(optionCity);
+      const stateMatches = !normalizedState || !optionState || optionState === normalizedState;
+      return cityNameMatches && stateMatches;
+    });
+
+  if (!knownCity && Number.isFinite(Number(city.latitude)) && Number.isFinite(Number(city.longitude))) {
+    const nearbyCities = allCities
+      .map((option) => {
+        const normalizedOptionName = normalizeCity(option.name);
+        const knownCoordinates = cityCoordinatesMap[normalizedOptionName];
+
+        if (!knownCoordinates) {
+          return null;
+        }
+
+        return {
+          option,
+          distanceKm: getDistanceInKm(
+            Number(city.latitude),
+            Number(city.longitude),
+            knownCoordinates.latitude,
+            knownCoordinates.longitude
+          ),
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => left.distanceKm - right.distanceKm);
+
+    if (nearbyCities[0] && nearbyCities[0].distanceKm <= 35) {
+      knownCity = nearbyCities[0].option;
+    }
+  }
 
   return knownCity
     ? {
@@ -240,10 +338,11 @@ const mapCityToKnownOption = (city = {}, allCities = []) => {
 const LocationContext = createContext(null);
 
 export const LocationProvider = ({ children }) => {
-  const [selectedLocation, setSelectedLocation] = useState(readStoredLocation());
+  const storedLocationState = useMemo(() => readStoredLocation(), []);
+  const [selectedLocation, setSelectedLocation] = useState(storedLocationState.location);
+  const [isLocationFilterEnabled, setIsLocationFilterEnabled] = useState(storedLocationState.isFilterEnabled);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [availableCities, setAvailableCities] = useState([]);
-  const initialDetectionAttemptedRef = useRef(false);
 
   const allCities = useMemo(() => {
     const merged = [...popularCities, ...otherCities, ...availableCities];
@@ -272,7 +371,8 @@ export const LocationProvider = ({ children }) => {
       );
 
       setSelectedLocation(nextLocation);
-      persistLocation(nextLocation);
+      setIsLocationFilterEnabled(true);
+      persistLocation(nextLocation, true);
 
       if (!options.silent) {
         toast.success(`${nextLocation.name} selected`);
@@ -281,6 +381,18 @@ export const LocationProvider = ({ children }) => {
       return nextLocation;
     },
     [allCities]
+  );
+
+  const clearLocationFilter = useCallback(
+    (options = {}) => {
+      setIsLocationFilterEnabled(false);
+      persistLocation(selectedLocation, false);
+
+      if (!options.silent) {
+        toast.success("Showing all cities");
+      }
+    },
+    [selectedLocation]
   );
 
   const detectCurrentLocation = useCallback(async () => {
@@ -297,8 +409,14 @@ export const LocationProvider = ({ children }) => {
                 try {
                   const city = await reverseGeocode(position.coords.latitude, position.coords.longitude);
                   resolve(city);
-                } catch (error) {
-                  reject(error);
+                } catch (_error) {
+                  resolve({
+                    name: "",
+                    state: "",
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    source: "auto",
+                  });
                 }
               },
               (error) => reject(error),
@@ -367,35 +485,22 @@ export const LocationProvider = ({ children }) => {
     };
   }, []);
 
-  useEffect(() => {
-    if (initialDetectionAttemptedRef.current || selectedLocation) {
-      return;
-    }
+  const value = useMemo(() => {
+    const defaultLocation = { name: "Select City", state: "Choose location", source: "fallback" };
 
-    initialDetectionAttemptedRef.current = true;
-
-    const runInitialSelection = async () => {
-      const detectedLocation = await detectCurrentLocation();
-
-      if (!detectedLocation) {
-        chooseCity(allCities[0] || popularCities[0], { silent: true, source: "fallback" });
-      }
-    };
-
-    runInitialSelection();
-  }, [allCities, chooseCity, detectCurrentLocation, selectedLocation]);
-
-  const value = useMemo(
-    () => ({
+    return {
       allCities,
+      clearLocationFilter,
       chooseCity,
       detectCurrentLocation,
       isDetectingLocation,
       popularCities,
-      selectedLocation: selectedLocation || { name: "Select City", state: "Choose location", source: "fallback" },
-    }),
-    [allCities, chooseCity, detectCurrentLocation, isDetectingLocation, selectedLocation]
-  );
+      selectedLocation:
+        isLocationFilterEnabled && selectedLocation
+          ? selectedLocation
+          : defaultLocation,
+    };
+  }, [allCities, clearLocationFilter, chooseCity, detectCurrentLocation, isDetectingLocation, selectedLocation, isLocationFilterEnabled]);
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 };
@@ -408,10 +513,8 @@ export const filterItemsByLocation = (items = [], selectedLocation) => {
   }
 
   const selectedCity = normalizeCity(selectedLocation.name);
-  const matchingItems = items.filter((item) => {
+  return items.filter((item) => {
     const cityValue = normalizeCity(item.city || "");
     return cityValue === selectedCity;
   });
-
-  return matchingItems.length ? matchingItems : items;
 };
