@@ -31,6 +31,38 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const hash = window.location.hash || "";
+    const match = hash.match(/oauth_token=([^&]+)/);
+    const errorMatch = hash.match(/oauth_error=([^&]+)/);
+    const successMatch = hash.match(/oauth_success=([^&]+)/);
+    if (match && match[1]) {
+      const decoded = decodeURIComponent(match[1]);
+      persistAuth({ token: decoded });
+      if (successMatch && successMatch[1]) {
+        try {
+          window.sessionStorage.setItem("oauth_success", decodeURIComponent(successMatch[1]));
+          window.dispatchEvent(new Event("oauth-toast"));
+        } catch (error) {}
+      }
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      return;
+    }
+
+    if (errorMatch && errorMatch[1]) {
+      const decoded = decodeURIComponent(errorMatch[1]);
+      try {
+        window.sessionStorage.setItem("oauth_error", decoded);
+        window.dispatchEvent(new Event("oauth-toast"));
+      } catch (error) {}
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    }
+  }, []);
+
   const registerUser = async (userData) => {
     const response = await axios.post(`${API_BASE_URL}/register`, userData);
     persistAuth(response.data);

@@ -88,6 +88,21 @@ export const Register = () => {
             Create your account to browse events, book tickets, and manage your bookings.
           </p>
 
+          <a
+            href={`${import.meta.env.VITE_API_URL || "http://localhost:5000/api/auth"}/google`}
+            className="mt-[2.2rem] inline-flex w-full items-center justify-center rounded-[1.4rem] border border-[rgba(28,28,28,0.14)] bg-white px-[1.8rem] py-[1.2rem] text-[1.45rem] font-bold text-[var(--color-text-primary)] transition-[border-color,box-shadow,transform] duration-200 hover:border-[rgba(248,68,100,0.35)] hover:shadow-[0_12px_24px_rgba(248,68,100,0.12)] hover:-translate-y-px"
+          >
+            Continue with Google
+          </a>
+
+          <div className="my-[2rem] flex items-center gap-[1rem]">
+            <div className="h-px flex-1 bg-[rgba(28,28,28,0.08)]" />
+            <span className="text-[1.2rem] font-bold uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
+              Or register with email
+            </span>
+            <div className="h-px flex-1 bg-[rgba(28,28,28,0.08)]" />
+          </div>
+
           <form className="mt-[2.6rem] grid gap-[1.6rem]" onSubmit={handleSubmit}>
             <div className="grid grid-cols-2 gap-[1.6rem] max-[640px]:grid-cols-1">
               <div className="grid gap-[0.8rem]">

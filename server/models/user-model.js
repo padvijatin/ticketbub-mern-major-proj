@@ -21,13 +21,29 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
     },
     password: {
       type: String,
-      required: true,
       minlength: 6,
+      default: null,
+    },
+    googleId: {
+      type: String,
+      default: null,
+      index: true,
+      sparse: true,
+    },
+    avatar: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    authProviders: {
+      type: [String],
+      default: ["local"],
+      set: (values = []) => [...new Set(values.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean))],
     },
     role: {
       type: String,
@@ -84,7 +100,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function save() {
-  if (!this.isModified("password")) {
+  if (!this.isModified("password") || !this.password) {
     return;
   }
 
@@ -93,6 +109,10 @@ userSchema.pre("save", async function save() {
 });
 
 userSchema.methods.comparePassword = function comparePassword(password) {
+  if (!this.password) {
+    return Promise.resolve(false);
+  }
+
   return bcrypt.compare(password, this.password);
 };
 

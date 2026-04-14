@@ -14,6 +14,8 @@ const authLimiter = buildRateLimiter({
 
 router.post("/register", authLimiter, validate(registerSchema), authController.register);
 router.post("/login", authLimiter, validate(loginSchema), authController.login);
+router.get("/google", authLimiter, authController.googleRedirect);
+router.get("/google/callback", authLimiter, authController.googleCallback);
 router.get("/user", authMiddleware, authController.user);
 router.post("/logout", authMiddleware, authController.logout);
 

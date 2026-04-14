@@ -1,6 +1,7 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import { Home } from "./pages/Home";
 import { Movies } from "./pages/Movies";
 import { Sports } from "./pages/Sports";
@@ -33,6 +34,27 @@ const pageFallback = (
 );
 
 const App = () => {
+  useEffect(() => {
+    const showOauthToasts = () => {
+      try {
+        const oauthError = window.sessionStorage.getItem("oauth_error");
+        if (oauthError) {
+          toast.error(oauthError);
+          window.sessionStorage.removeItem("oauth_error");
+        }
+        const oauthSuccess = window.sessionStorage.getItem("oauth_success");
+        if (oauthSuccess) {
+          toast.success(oauthSuccess);
+          window.sessionStorage.removeItem("oauth_success");
+        }
+      } catch (error) {}
+    };
+
+    showOauthToasts();
+    window.addEventListener("oauth-toast", showOauthToasts);
+    return () => window.removeEventListener("oauth-toast", showOauthToasts);
+  }, []);
+
   return (
     <Router>
       <Navbar />
