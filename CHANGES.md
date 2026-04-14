@@ -38,3 +38,9 @@
 
 - Verified lint and module load checks on updated backend and frontend files.
 - Verified live resend flows and DB ticket status updates during implementation.
+
+## Auth UI Polish
+
+- Added proper Google brand icon to login and register auth buttons.
+- Refined auth page copy to better match TicketHub's booking-focused experience.
+- Kept auth flow behavior unchanged while improving presentation and clarity.
