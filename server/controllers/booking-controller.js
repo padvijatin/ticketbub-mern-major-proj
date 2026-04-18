@@ -12,7 +12,7 @@ const { resolveAuthContext } = require("../middlewares/auth-middleware");
 const { validateCouponForAmount } = require("../services/coupon-service");
 const { buildCheckoutPricing } = require("../services/pricing-service");
 const { getTransporter } = require("../utils/mailer");
-const { cloudinary } = require("../config/cloudinary");
+const { cloudinary, normalizeCloudinaryAssetUrl } = require("../config/cloudinary");
 const { buildTicketAccessToken, getPrimaryClientUrl, verifyTicketAccessToken } = require("../utils/runtime-config");
 const { incrementUserInterestSignals } = require("../services/recommendation-service");
 const {
@@ -935,7 +935,7 @@ const listUserBookings = async (req, res) => {
               venue: booking.event.venue || "",
               city: booking.event.city || "",
               date: booking.event.date || null,
-              poster: booking.event.poster || "",
+              poster: normalizeCloudinaryAssetUrl(booking.event.poster || ""),
               category: booking.event.category || "",
               contentType: detectBookingContentType(booking.event.category || ""),
             }

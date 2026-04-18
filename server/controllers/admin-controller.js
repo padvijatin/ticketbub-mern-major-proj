@@ -161,7 +161,9 @@ const logAdminAction = async ({ action, entity, entityId = "", actor, metadata =
 };
 
 const buildPosterPath = (req, existingPoster = "") => {
-  const uploadedPosterUrl = String(req.file?.path || "").trim();
+  const uploadedPosterUrl = String(
+    req.file?.secure_url || req.file?.path || req.file?.filename || req.file?.public_id || ""
+  ).trim();
 
   if (uploadedPosterUrl) {
     return uploadedPosterUrl;
@@ -506,7 +508,6 @@ const updateEvent = async (req, res) => {
     if (previousPoster && previousPoster !== nextPoster) {
       await deleteCloudinaryAsset(previousPoster);
     }
-
     await logAdminAction({
       action: "event_update",
       entity: "event",

@@ -19,6 +19,7 @@ const heroFallbackByType = {
   sports: "bg-[linear-gradient(135deg,#0f172a_0%,#0f766e_52%,#22c55e_100%)]",
   event: "bg-[linear-gradient(135deg,#1c1c1c_0%,#7b3fe4_46%,#f84464_100%)]",
 };
+
 const HeroSlide = ({ slide }) => {
   const fallbackClassName = heroFallbackByType[slide.contentType] || heroFallbackByType.event;
 

@@ -2,7 +2,7 @@ const Event = require("../models/event-model");
 const User = require("../models/user-model");
 const Wishlist = require("../models/wishlist-model");
 const Review = require("../models/review-model");
-const { cloudinaryAssetExists } = require("../config/cloudinary");
+const { cloudinaryAssetExists, normalizeCloudinaryAssetUrl } = require("../config/cloudinary");
 const { getSeatLockSnapshot } = require("../services/seat-lock-service");
 const { getTopSignalKeys, incrementUserInterestSignals, sanitizeSignalKey } = require("../services/recommendation-service");
 const { getAuthorizationToken, resolveUserFromToken } = require("../services/socket-auth");
@@ -334,7 +334,7 @@ const syncEventPosterState = async (event) => {
   }
 
   const posterExists = await cloudinaryAssetExists(currentPoster);
-  if (posterExists) {
+  if (posterExists !== false) {
     return false;
   }
 
@@ -390,7 +390,7 @@ const serializeEvent = (event, interestedCountMap = {}, reviewSummaryMap = {}, s
     viewCount: Math.max(0, Number(event.viewCount) || 0),
     bookingCount: Math.max(0, Number(event.bookingCount) || 0),
     lastViewedAt: event.lastViewedAt || null,
-    poster: event.poster,
+    poster: normalizeCloudinaryAssetUrl(event.poster || ""),
     cta: contentType === "movie" ? "Book Movie" : contentType === "sports" ? "Get Sports Tickets" : "Book Event",
     to: routeByType[contentType],
     isActive: event.isActive,

@@ -88,7 +88,7 @@ export const createAdminEvent = async ({ authorizationToken, payload }) => {
   const response = await axios.post(
     `${adminApiUrl}/events`,
     buildEventFormData(payload),
-    buildConfig(authorizationToken, { "Content-Type": "multipart/form-data" })
+    buildConfig(authorizationToken)
   );
   return normalizeEvent(response.data.event);
 };
@@ -97,7 +97,7 @@ export const updateAdminEvent = async ({ authorizationToken, eventId, payload })
   const response = await axios.patch(
     `${adminApiUrl}/events/${eventId}`,
     buildEventFormData(payload),
-    buildConfig(authorizationToken, { "Content-Type": "multipart/form-data" })
+    buildConfig(authorizationToken)
   );
   return normalizeEvent(response.data.event);
 };

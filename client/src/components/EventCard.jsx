@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, Heart, MapPin } from "lucide-react";
 import { Rating } from "./Rating.jsx";
 import { useWishlist } from "../store/wishlist-context.jsx";
+import { fallbackPosterImage, resolvePosterSource } from "./posterImageUtils.js";
 
 const routeByType = {
   movie: "/movies",
@@ -15,8 +16,7 @@ const fallbackByType = {
   sports: "bg-[linear-gradient(135deg,#0f172a_0%,#0f766e_52%,#22c55e_100%)]",
   event: "bg-[linear-gradient(135deg,#1c1c1c_0%,#7b3fe4_46%,#f84464_100%)]",
 };
-const fallbackImage = "/fallback.jpg";
-
+const fallbackImage = fallbackPosterImage;
 
 const formatDate = (value) => {
   if (!value) {
@@ -106,7 +106,7 @@ const EventCardSkeleton = ({ size = "default" }) => {
 };
 
 const EventCard = ({ event = {}, isLoading = false, size = "default" }) => {
-  const primaryImage = event.image || event.poster || fallbackImage;
+  const primaryImage = resolvePosterSource(event.image || event.poster);
   const [imageSrc, setImageSrc] = useState(primaryImage);
   const { isWishlisted, toggleWishlist } = useWishlist();
   const isListing = size === "listing";

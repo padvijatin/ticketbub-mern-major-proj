@@ -77,7 +77,10 @@ const createApp = ({ clientUrl } = {}) => {
       return;
     }
 
-    if (error?.message === "Only image uploads are allowed" || error?.message === "Only jpg, jpeg, and png image uploads are allowed") {
+    if (
+      error?.message === "Only image uploads are allowed" ||
+      error?.message === "Only jpg, jpeg, png, and webp image uploads are allowed"
+    ) {
       res.status(400).json({ message: error.message });
       return;
     }

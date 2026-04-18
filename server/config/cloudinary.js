@@ -6,6 +6,11 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+const isCloudinaryAdminResourceCheckEnabled = () =>
+  String(process.env.CLOUDINARY_ENABLE_ADMIN_RESOURCE_CHECK || "")
+    .trim()
+    .toLowerCase() === "true";
+
 const buildCloudinaryUrl = (publicId = "") => {
   const normalizedPublicId = String(publicId || "").trim();
 
@@ -18,8 +23,30 @@ const buildCloudinaryUrl = (publicId = "") => {
   });
 };
 
+const normalizeCloudinaryAssetUrl = (value = "") => {
+  const normalizedValue = String(value || "").trim();
+
+  if (!normalizedValue) {
+    return "";
+  }
+
+  if (/^(https?:)?\/\//i.test(normalizedValue) || normalizedValue.startsWith("data:") || normalizedValue.startsWith("/")) {
+    return normalizedValue;
+  }
+
+  return buildCloudinaryUrl(normalizedValue);
+};
+
 const extractCloudinaryPublicId = (value = "") => {
   const normalizedValue = String(value || "").trim();
+
+  if (!normalizedValue) {
+    return "";
+  }
+
+  if (!/^(https?:)?\/\//i.test(normalizedValue) && !normalizedValue.startsWith("data:") && !normalizedValue.startsWith("/")) {
+    return normalizedValue;
+  }
 
   if (!normalizedValue.includes("/res.cloudinary.com/")) {
     return "";
@@ -74,6 +101,10 @@ const cloudinaryAssetExists = async (value = "") => {
     return false;
   }
 
+  if (!isCloudinaryAdminResourceCheckEnabled()) {
+    return null;
+  }
+
   try {
     await cloudinary.api.resource(publicId, {
       resource_type: "image",
@@ -88,7 +119,7 @@ const cloudinaryAssetExists = async (value = "") => {
     }
 
     console.error("cloudinary-resource-check-failed", error);
-    return true;
+    return null;
   }
 };
 
@@ -98,4 +129,6 @@ module.exports = {
   cloudinaryAssetExists,
   deleteCloudinaryAsset,
   extractCloudinaryPublicId,
+  isCloudinaryAdminResourceCheckEnabled,
+  normalizeCloudinaryAssetUrl,
 };

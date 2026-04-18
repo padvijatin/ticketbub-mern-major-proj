@@ -14,7 +14,16 @@ import {
 } from "../../utils/adminApi.js";
 import { getValidatedFieldClassName } from "../../utils/formValidation.js";
 
+const createSeatZoneId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `seat-zone-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const createSeatZone = () => ({
+  id: createSeatZoneId(),
   sectionGroup: "",
   name: "",
   price: "",
@@ -121,6 +130,7 @@ const eventToFormState = (event) => ({
   isActive: event.isActive ?? true,
   seatZones: (event.seatZones || []).length
     ? event.seatZones.map((zone) => ({
+        id: createSeatZoneId(),
         sectionGroup: zone.sectionGroup || "",
         name: zone.name || "",
         price: zone.price || "",
@@ -285,6 +295,10 @@ const validateFormState = (formState) => {
 };
 
 const requiredFieldSet = new Set(["title", "category", "venue", "city", "date", "price"]);
+
+const preventNumberInputScrollChange = (event) => {
+  event.currentTarget.blur();
+};
 
 const EventManagement = ({ role }) => {
   const queryClient = useQueryClient();
@@ -525,7 +539,7 @@ const EventManagement = ({ role }) => {
     const selectedPreset = seatZonePresets[presetType] || seatZonePresets.event;
     setFormState((current) => ({
       ...current,
-      seatZones: selectedPreset.map((zone) => ({ ...zone })),
+      seatZones: selectedPreset.map((zone) => ({ id: createSeatZoneId(), ...zone })),
     }));
   };
 
@@ -612,6 +626,7 @@ const EventManagement = ({ role }) => {
                     type={type || "text"}
                     value={formState[field]}
                     onChange={(eventObject) => setFormState((current) => ({ ...current, [field]: eventObject.target.value }))}
+                    onWheel={type === "number" ? preventNumberInputScrollChange : undefined}
                     min={field === "price" || field === "seatsPerRow" || field === "totalSeats" ? 0 : undefined}
                     step={field === "latitude" || field === "longitude" ? "any" : undefined}
                     className={getEventFieldClassName(field)}
@@ -717,7 +732,14 @@ const EventManagement = ({ role }) => {
                   <input
                     type="text"
                     value={formState.poster}
-                    onChange={(eventObject) => setFormState((current) => ({ ...current, poster: eventObject.target.value, removePoster: false }))}
+                    onChange={(eventObject) =>
+                      setFormState((current) => ({
+                        ...current,
+                        poster: eventObject.target.value,
+                        posterFile: null,
+                        removePoster: false,
+                      }))
+                    }
                     className={getEventFieldClassName("poster")}
                   />
                 </label>
@@ -726,14 +748,22 @@ const EventManagement = ({ role }) => {
                   Upload poster image
                   <input
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                     className="hidden"
                     onChange={(eventObject) => {
                       const nextFile = eventObject.target.files?.[0] || null;
-                      setFormState((current) => ({ ...current, posterFile: nextFile, removePoster: false }));
+                      setFormState((current) => ({
+                        ...current,
+                        poster: nextFile ? "" : current.poster,
+                        posterFile: nextFile,
+                        removePoster: false,
+                      }));
                     }}
                   />
                 </label>
+                <p className="mt-[0.7rem] text-[1.08rem] text-[var(--color-text-secondary)]">
+                  Supported formats: JPG, PNG, WEBP up to 5MB.
+                </p>
                 <label className="mt-[1rem] flex items-center gap-[0.7rem] text-[1.15rem] text-[var(--color-text-secondary)]">
                   <input
                     type="checkbox"
@@ -792,7 +822,7 @@ const EventManagement = ({ role }) => {
                   </div>
                 ) : null}
                 {formState.seatZones.map((zone, zoneIndex) => (
-                  <div key={`${zoneIndex}-${zone.name}`} className="grid gap-[1rem] rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] p-[1rem] md:grid-cols-2 xl:grid-cols-6">
+                  <div key={zone.id || zoneIndex} className="grid gap-[1rem] rounded-[1.2rem] border border-[rgba(28,28,28,0.08)] p-[1rem] md:grid-cols-2 xl:grid-cols-6">
                     {[
                       ["sectionGroup", "Group"],
                       ["name", "Zone Name"],
@@ -814,6 +844,7 @@ const EventManagement = ({ role }) => {
                               ),
                             }))
                           }
+                          onWheel={type === "number" ? preventNumberInputScrollChange : undefined}
                           min={field === "price" || field === "seatsPerRow" || field === "totalSeats" ? 0 : undefined}
                           className={getValidatedFieldClassName(formInputClassName, Boolean(isSubmitAttempted && formErrors.seatZoneErrors[zoneIndex]?.[field]))}
                         />
