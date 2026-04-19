@@ -88,7 +88,3 @@ Verification commands:
 
 - The frontend production build completed successfully.
 - Vite reported a large-chunk warning for the main bundle, which is a performance optimization note and not a build failure.
-# Deployment note
-
-- triggered a follow-up deploy commit so Render can pick up the latest backend runtime config changes reliably
-
