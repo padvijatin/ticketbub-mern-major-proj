@@ -2,8 +2,24 @@
 const Event = require("../models/event-model");
 const Wishlist = require("../models/wishlist-model");
 const { serializeEvent } = require("./event-controller");
+const { incrementUserInterestSignals } = require("../services/recommendation-service");
+
+const moviePattern = /(movie|film|cinema|screen|premiere)/i;
+const sportsPattern = /(sport|cricket|football|match|league|ipl|cup|tournament|stadium)/i;
 
 const isApprovedActiveEvent = (event) => event && event.isActive && event.status === "approved";
+
+const detectWishlistContentType = (category = "") => {
+  if (moviePattern.test(String(category || ""))) {
+    return "movie";
+  }
+
+  if (sportsPattern.test(String(category || ""))) {
+    return "sports";
+  }
+
+  return "event";
+};
 
 const serializeWishlistEntry = (entry) => ({
   ...serializeEvent(entry.event),
@@ -94,6 +110,26 @@ const ensureWishlistEvent = async (eventId) => {
   });
 };
 
+const trackWishlistInterest = async (userId, events = [], weight = 2) => {
+  const validEvents = (Array.isArray(events) ? events : []).filter(Boolean);
+
+  if (!userId || !validEvents.length) {
+    return;
+  }
+
+  await Promise.all(
+    validEvents.map((event) =>
+      incrementUserInterestSignals({
+        userId,
+        category: event.category,
+        city: event.city,
+        contentType: detectWishlistContentType(event.category),
+        weight,
+      })
+    )
+  );
+};
+
 const addWishlistItem = async (req, res) => {
   try {
     const { eventId } = req.body;
@@ -122,6 +158,8 @@ const addWishlistItem = async (req, res) => {
         returnDocument: "after",
       }
     );
+
+    await trackWishlistInterest(req.user._id, [event], 2);
 
     const count = await Wishlist.countDocuments({ user: req.user._id });
 
@@ -166,7 +204,7 @@ const syncWishlist = async (req, res) => {
         _id: { $in: uniqueEventIds },
         isActive: true,
         status: "approved",
-      }).select("_id");
+      }).select("_id category city");
 
       const operations = events.map((event) => ({
         updateOne: {
@@ -190,6 +228,8 @@ const syncWishlist = async (req, res) => {
       if (operations.length) {
         await Wishlist.bulkWrite(operations, { ordered: false });
       }
+
+      await trackWishlistInterest(req.user._id, events, 1);
     }
 
     return getWishlist(req, res);
