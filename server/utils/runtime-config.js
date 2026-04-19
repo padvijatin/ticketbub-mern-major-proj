@@ -10,6 +10,11 @@ const getClientUrls = (value = process.env.CLIENT_URL || "") => normalizeList(va
 
 const getPrimaryClientUrl = () => getClientUrls()[0] || "http://localhost:5173";
 
+const isRazorpayTestModeAllowedInProduction = () =>
+  String(process.env.ALLOW_RAZORPAY_TEST_MODE_IN_PRODUCTION || "")
+    .trim()
+    .toLowerCase() === "true";
+
 const getJwtSecretOrThrow = () => {
   const secret = String(process.env.JWT_SECRET || "").trim();
 
@@ -119,7 +124,13 @@ const validateRuntimeConfig = () => {
 
   if (razorpayKeyId) {
     if (nodeEnv === "production" && /^rzp_test_/i.test(razorpayKeyId)) {
-      errors.push("Production is configured with Razorpay test keys.");
+      if (!isRazorpayTestModeAllowedInProduction()) {
+        errors.push(
+          "Production is configured with Razorpay test keys. Set ALLOW_RAZORPAY_TEST_MODE_IN_PRODUCTION=true only if this is an intentional temporary test deployment."
+        );
+      } else {
+        warnings.push("Production is using Razorpay test keys because ALLOW_RAZORPAY_TEST_MODE_IN_PRODUCTION=true.");
+      }
     }
 
     if (nodeEnv !== "production" && /^rzp_live_/i.test(razorpayKeyId)) {
@@ -135,6 +146,7 @@ module.exports = {
   getClientUrls,
   getJwtSecretOrThrow,
   getPrimaryClientUrl,
+  isRazorpayTestModeAllowedInProduction,
   validateRuntimeConfig,
   verifyTicketAccessToken,
 };

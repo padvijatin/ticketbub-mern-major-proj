@@ -70,6 +70,7 @@ GOOGLE_REDIRECT_URL=http://localhost:5000/api/auth/google/callback
 
 RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+ALLOW_RAZORPAY_TEST_MODE_IN_PRODUCTION=false
 
 SMTP_HOST=your_smtp_host
 SMTP_PORT=587
@@ -109,4 +110,3 @@ Current backend tests in the repository cover:
 - `middlewares` for auth, validation, upload, and rate limiting
 - `services` for seat locking, recommendation logic, coupons, pricing, and sockets
 - `utils` for runtime config, database helpers, mailer, and seat layout helpers
-
