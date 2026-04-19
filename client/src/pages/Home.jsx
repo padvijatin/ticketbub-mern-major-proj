@@ -6,6 +6,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import EventCard from "../components/EventCard.jsx";
+import HeroPosterCard from "../components/HeroPosterCard.jsx";
 import { HeroCarousel } from "../components/HeroCarousel.jsx";
 import PosterImage from "../components/PosterImage.jsx";
 import { useAuth } from "../store/auth-context.jsx";
@@ -19,28 +20,45 @@ const heroFallbackByType = {
   sports: "bg-[linear-gradient(135deg,#0f172a_0%,#0f766e_52%,#22c55e_100%)]",
   event: "bg-[linear-gradient(135deg,#1c1c1c_0%,#7b3fe4_46%,#f84464_100%)]",
 };
+const homeHeroShellClassName =
+  "relative overflow-hidden rounded-[2.8rem] border border-[rgba(28,28,28,0.08)]";
+const homeHeroGridClassName =
+  "relative z-10 grid min-h-[32rem] gap-[1.8rem] p-[1.6rem] md:min-h-[42rem] md:grid-cols-[minmax(0,1.14fr)_clamp(23rem,24vw,29rem)] md:items-center md:gap-[2.4rem] md:p-[2rem] lg:px-[2.4rem]";
+const homeHeroContentClassName =
+  "flex h-full min-w-0 max-w-[60rem] flex-col justify-center py-[0.2rem] md:py-[0.6rem]";
 
 const HeroSlide = ({ slide }) => {
   const fallbackClassName = heroFallbackByType[slide.contentType] || heroFallbackByType.event;
 
   return (
-    <section className={`relative h-[29rem] overflow-hidden rounded-[2.2rem] sm:h-[34rem] sm:rounded-[2.8rem] md:h-[44rem] ${fallbackClassName}`}>
-      <PosterImage src={slide.poster} alt={slide.title} className="absolute inset-0 h-full w-full object-cover" />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(28,28,28,0.86)_0%,rgba(28,28,28,0.48)_44%,rgba(28,28,28,0.1)_100%)]" />
+    <section className={`${homeHeroShellClassName} ${fallbackClassName}`}>
+      <div className="absolute inset-0">
+        <PosterImage
+          src={slide.poster}
+          alt={slide.title}
+          className="h-full w-full scale-[1.14] object-cover opacity-68 blur-[34px]"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.84)_0%,rgba(255,255,255,0.72)_40%,rgba(255,255,255,0.48)_62%,rgba(255,255,255,0.62)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.34),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(255,255,255,0.24),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.22)_100%)]" />
+      </div>
 
-      <div className="relative z-10 flex h-full flex-col justify-end p-[1.8rem] text-[var(--color-text-light)] sm:p-[2.4rem] md:p-[4rem]">
-        <h2 className="max-w-[11ch] text-[clamp(3rem,4.4vw,5.4rem)] leading-[1.03] font-extrabold tracking-[-0.04em]">
-          {slide.title}
-        </h2>
-        <p className="mt-[1rem] max-w-[52rem] text-[1.35rem] leading-[1.7] text-white/88 sm:mt-[1.2rem] sm:text-[1.5rem] md:text-[1.7rem]">
-          {slide.subtitle}
-        </p>
-        <Link
-          to={slide.to}
-          className="mt-[1.6rem] inline-flex w-fit items-center rounded-[1.25rem] bg-[var(--color-primary)] px-[1.5rem] py-[1rem] text-[1.3rem] font-bold text-[var(--color-text-light)] transition-all duration-200 hover:bg-[var(--color-primary-hover)] sm:mt-[2rem] sm:rounded-[1.4rem] sm:px-[1.8rem] sm:py-[1.2rem] sm:text-[1.4rem] md:text-[1.5rem]"
-        >
-          {slide.cta}
-        </Link>
+      <div className={homeHeroGridClassName}>
+        <div className={homeHeroContentClassName}>
+          <h2 className="max-w-[12ch] overflow-hidden text-[clamp(2.7rem,4.1vw,4.9rem)] leading-[1.04] font-extrabold tracking-[-0.04em] text-[var(--color-text-primary)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+            {slide.title}
+          </h2>
+          <p className="mt-[1.4rem] max-w-[52rem] overflow-hidden text-[1.4rem] leading-[1.7] text-[rgba(28,28,28,0.84)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] md:text-[1.56rem]">
+            {slide.subtitle}
+          </p>
+          <Link
+            to={slide.to}
+            className="mt-[2.1rem] inline-flex w-fit items-center rounded-[1.4rem] bg-[#17171c] px-[1.8rem] py-[1.2rem] text-[1.4rem] font-bold text-[var(--color-text-light)] shadow-[0_18px_32px_rgba(23,23,28,0.18)] transition-all duration-200 hover:bg-[var(--color-primary)] md:text-[1.5rem]"
+          >
+            {slide.cta}
+          </Link>
+        </div>
+
+        <HeroPosterCard image={slide.poster} title={slide.title} />
       </div>
     </section>
   );
@@ -115,31 +133,35 @@ const HomeRail = ({
       ) : (
         <div className="overflow-hidden rounded-[2rem]">
           <Swiper
-          modules={[A11y, Navigation]}
-          navigation={{
-            prevEl: `.${prevClassName}`,
-            nextEl: `.${nextClassName}`,
-          }}
-          className="!overflow-visible"
-          grabCursor
-          watchOverflow
-          spaceBetween={14}
-          slidesPerView={1.08}
-          breakpoints={{
-            420: { slidesPerView: 1.18, spaceBetween: 16 },
-            560: { slidesPerView: 1.45, spaceBetween: 18 },
-            768: { slidesPerView: 2.1, spaceBetween: 20 },
-            1024: { slidesPerView: 3.1, spaceBetween: 20 },
-            1280: { slidesPerView: 4, spaceBetween: 22 },
-          }}
-        >
-          {slides.map((item) => (
-            <SwiperSlide key={item.id || item.title} className="h-auto">
-              <div className="h-full">
-                <EventCard event={item} isLoading={isLoading} size="listing" />
-              </div>
-            </SwiperSlide>
-          ))}
+            modules={[A11y, Navigation]}
+            navigation={{
+              prevEl: `.${prevClassName}`,
+              nextEl: `.${nextClassName}`,
+            }}
+            className="!overflow-visible [&_.swiper-wrapper]:items-stretch"
+            grabCursor
+            watchOverflow
+            spaceBetween={14}
+            slidesPerView={1.08}
+            breakpoints={{
+              420: { slidesPerView: 1.18, spaceBetween: 16 },
+              560: { slidesPerView: 1.45, spaceBetween: 18 },
+              768: { slidesPerView: 2.1, spaceBetween: 20 },
+              1024: { slidesPerView: 3.1, spaceBetween: 20 },
+              1280: { slidesPerView: 4, spaceBetween: 22 },
+            }}
+          >
+            {slides.map((item) => (
+              <SwiperSlide key={item.id || item.title} className="h-auto">
+                <div className="h-full">
+                  <EventCard
+                    event={item}
+                    isLoading={isLoading}
+                    size="listing"
+                  />
+                </div>
+              </SwiperSlide>
+            ))}
           </Swiper>
         </div>
       )}
@@ -257,14 +279,22 @@ export const Home = () => {
               renderSlide={(slide) => <HeroSlide slide={slide} />}
             />
           ) : (
-            <section className="flex h-[29rem] items-end overflow-hidden rounded-[2.2rem] bg-[linear-gradient(135deg,#171717_0%,#7b3fe4_48%,#f84464_100%)] p-[1.8rem] text-[var(--color-text-light)] sm:h-[34rem] sm:rounded-[2.8rem] sm:p-[2.4rem] md:h-[44rem] md:p-[4rem]">
-              <div>
-                <h2 className="max-w-[11ch] text-[clamp(3rem,4.4vw,5.4rem)] leading-[1.03] font-extrabold tracking-[-0.04em]">
-                  {isLoading ? "Loading live events..." : "No live events available yet."}
-                </h2>
-                <p className="mt-[1.2rem] max-w-[52rem] text-[1.5rem] leading-[1.75] text-white/88 md:text-[1.7rem]">
-                  {error || "Add active records to your existing events collection and they will appear here automatically."}
-                </p>
+            <section className={`${homeHeroShellClassName} bg-[linear-gradient(135deg,#171717_0%,#7b3fe4_48%,#f84464_100%)] text-[var(--color-text-light)]`}>
+              <div className={homeHeroGridClassName}>
+                <div className={homeHeroContentClassName}>
+                  <h2 className="max-w-[11ch] text-[clamp(3rem,4.4vw,5.4rem)] leading-[1.03] font-extrabold tracking-[-0.04em]">
+                    {isLoading ? "Loading live events..." : "No live events available yet."}
+                  </h2>
+                  <p className="mt-[1.2rem] max-w-[52rem] text-[1.5rem] leading-[1.75] text-white/88 md:text-[1.7rem]">
+                    {error || "Add active records to your existing events collection and they will appear here automatically."}
+                  </p>
+                </div>
+
+                <HeroPosterCard
+                  image=""
+                  title=""
+                  wrapperClassName="pointer-events-none opacity-0"
+                />
               </div>
             </section>
           )}

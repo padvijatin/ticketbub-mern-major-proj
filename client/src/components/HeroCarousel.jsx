@@ -6,7 +6,7 @@ import "swiper/css";
 import "swiper/css/effect-fade";
 
 const baseButtonClassName =
-  "absolute top-1/2 z-10 hidden h-[4.2rem] w-[4.2rem] -translate-y-1/2 items-center justify-center rounded-full border border-white/18 bg-white/12 text-white backdrop-blur-[12px] transition-colors duration-200 hover:bg-white/20 md:inline-flex";
+  "absolute top-1/2 z-10 hidden h-[4.4rem] w-[4.4rem] -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(248,68,100,0.16)] bg-white/78 text-[var(--color-text-primary)] shadow-[0_16px_32px_rgba(28,28,28,0.12)] backdrop-blur-[14px] transition-colors duration-200 hover:border-[rgba(248,68,100,0.28)] hover:bg-white hover:text-[var(--color-primary)] md:inline-flex";
 
 export const HeroCarousel = ({
   items = [],
@@ -105,7 +105,7 @@ export const HeroCarousel = ({
                 className={`h-[0.9rem] rounded-full transition-all duration-200 ${
                   index === activeIndex
                     ? "w-[3rem] bg-[var(--color-primary)]"
-                    : "w-[0.9rem] bg-white/55"
+                    : "w-[0.9rem] bg-[rgba(28,28,28,0.18)] hover:bg-[rgba(248,68,100,0.28)]"
                 }`}
                 aria-label={getDotLabel(item, index)}
               />

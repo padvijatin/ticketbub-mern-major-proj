@@ -1,96 +1,56 @@
 # TicketHub
 
-TicketHub is a full-stack MERN event-booking platform built for a major project. It includes authentication, event discovery, seat selection, live seat locking, Razorpay payments, QR-based tickets, email delivery, wishlist support, admin controls, organizer tools, coupon management, validation improvements, and responsive UI polish across devices.
+TicketHub is a full-stack MERN ticket-booking platform for movies, sports, and live events. It combines event discovery, seat booking, payments, ticket delivery, wishlist support, and admin management in one responsive project.
 
-## Highlights
+## Core Features
 
-- MERN architecture with React + Vite frontend and Express + MongoDB backend
-- JWT authentication with register, login, logout, Google OAuth, profile update, and password update
-- Event discovery for movies, sports, and live events
-- Seat selection with real-time locking
-- Razorpay payment order creation and verification
-- Secure ticket access with protected fetch and signed access links
-- Ticket generation, Cloudinary upload, and email delivery
-- Admin and organizer dashboards for events, bookings, users, and coupons
-- Admin coupon create and edit flows with status and expiry handling
-- Inline form validation with field-level error messages
-- Improved status-code handling and cleaner API error display
-- Mobile, tablet, and desktop responsive layouts
+- authentication with email/password and Google OAuth
+- browsing for movies, sports, and live events
+- seat selection with live availability updates
+- Razorpay payment flow
+- QR ticket generation and email delivery
+- wishlist and booking history
+- admin and organizer dashboards
+- coupon management and event moderation
+- responsive UI across desktop, tablet, and mobile
+
+## Latest Frontend Update
+
+This release focuses on the customer-facing hero experience:
+
+- redesigned the home hero with a lighter cinematic layout
+- added a reusable `HeroPosterCard` component
+- refreshed listing page hero banners
+- rebuilt the event details hero with clearer metadata chips
+- aligned poster rendering with shared CSS utility classes
+- polished the About page heading colors
+
+See [CHANGES.md](./CHANGES.md) for the release summary.
 
 ## Tech Stack
 
 ### Frontend
 
-- React 19
-- Vite 7
-- React Router 7
-- Tailwind CSS 4
+- React
+- Vite
+- React Router
+- Tailwind CSS
 - Axios
 - TanStack React Query
 - Swiper
-- React Toastify
 - Framer Motion
 
 ### Backend
 
 - Node.js
-- Express 5
+- Express
 - MongoDB
 - Mongoose
 - JWT
-- bcrypt
-- Zod
 - Razorpay
 - Nodemailer
 - Cloudinary
-- Puppeteer
 - Socket.IO
-
-## Main Features
-
-### User Features
-
-- Register and login with email/password
-- Google sign-in support
-- Browse movies, sports, and event listings
-- Filter content by location
-- Save events to wishlist
-- Book seats with live availability updates
-- Pay through Razorpay
-- View bookings and tickets
-- Update profile and password
-
-### Ticketing Features
-
-- QR-based ticket generation
-- Ticket delivery through email
-- Ticket image hosting on Cloudinary
-- Auth-protected ticket fetch
-- Signed access-token support for shared ticket links
-
-### Admin / Organizer Features
-
-- Dashboard overview with revenue and booking insights
-- Event create, update, approval, and archive flows
-- Suggested seat-zone presets for movies, sports, and live events in the admin event form
-- Booking management
-- Coupon create and edit management
-- User management for admins
-
-## Security and Quality Improvements
-
-This version includes a stronger hardening pass than the earlier baseline:
-
-- protected ticket access instead of exposing raw booking data publicly
-- payment ownership checks during verification
-- role checks moved ahead of upload middleware for admin event routes
-- better runtime environment validation for JWT, CORS/client URL, Cloudinary, and Razorpay setup
-- improved HTTP status codes for auth, booking, contact, and payment flows
-- centralized frontend API error messaging
-- stronger request validation with Zod
-- lint-clean frontend
-- passing frontend and backend test suites
-- improved listing filter behavior with safer single-select handling and case-insensitive backend matching
 
 ## Project Structure
 
@@ -102,8 +62,7 @@ TicketHub/
 |   |   |-- components/
 |   |   |-- pages/
 |   |   |-- store/
-|   |   |-- utils/
-|   |   `-- ...
+|   |   `-- utils/
 |   `-- package.json
 |-- server/
 |   |-- controllers/
@@ -111,60 +70,46 @@ TicketHub/
 |   |-- models/
 |   |-- router/
 |   |-- utils/
-|   |-- validators/
 |   `-- package.json
 |-- README.md
-`-- .gitignore
+|-- CHANGES.md
+`-- push.md
 ```
 
-## Routes
+## Local Setup
 
-### Frontend
+### Install dependencies
 
-- `/`
-- `/movies`
-- `/sports`
-- `/events`
-- `/about`
-- `/contact`
-- `/login`
-- `/register`
-- `/profile`
-- `/wishlist`
-- `/bookings`
-- `/admin`
-- `/organizer`
-- `/event/:id`
-- `/event/:id/seats`
-- `/event/:id/payment`
-- `/event/:id/confirmation`
-- `/ticket/:bookingId`
+```bash
+cd server
+npm install
+cd ../client
+npm install
+```
 
-### Backend API Base
+### Start development servers
 
-`http://localhost:5000/api`
+```bash
+cd server
+npm run dev
+```
 
-### Main API Groups
+```bash
+cd client
+npm run dev
+```
 
-- `/auth`
-- `/events`
-- `/bookings`
-- `/payment`
-- `/wishlist`
-- `/coupons`
-- `/admin`
-- `/contact`
+- frontend: `http://localhost:5173`
+- backend: `http://localhost:5000`
 
-## Environment Setup
+## Environment
 
-Environment files are ignored by git. Keep your real secrets in `server/.env` locally.
-
-### Required backend variables
+Create `server/.env` with your real credentials. Typical variables include:
 
 ```env
 PORT=5000
 MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=use_a_long_secure_secret_value
+JWT_SECRET=use_a_long_secure_secret
 CLIENT_URL=http://localhost:5173,http://localhost:5174
 
 GOOGLE_CLIENT_ID=your_google_client_id
@@ -188,44 +133,13 @@ CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
-### Optional frontend variable
+Optional frontend variable:
 
 ```env
-VITE_API_URL=http://localhost:5000/api/auth
+VITE_API_URL=http://localhost:5000/api
 ```
 
-## Local Development
-
-### 1. Install dependencies
-
-```bash
-cd server
-npm install
-```
-
-```bash
-cd client
-npm install
-```
-
-### 2. Start backend
-
-```bash
-cd server
-npm run dev
-```
-
-### 3. Start frontend
-
-```bash
-cd client
-npm run dev
-```
-
-Frontend default URL: `http://localhost:5173`  
-Backend default URL: `http://localhost:5000`
-
-## Available Scripts
+## Scripts
 
 ### Client
 
@@ -240,45 +154,7 @@ Backend default URL: `http://localhost:5000`
 - `npm start`
 - `npm run test:run`
 
-## Verification
+## Repository
 
-Recent verification completed on this codebase:
+- GitHub: `https://github.com/padvijatin/TicketHub-Mern-Major-Proj`
 
-- frontend lint: passed
-- frontend tests: passed
-- frontend build: passed
-- backend tests: passed
-
-## Recent Admin Updates
-
-- Added admin coupon editing support from the dashboard UI
-- Added backend coupon update endpoint and validation for duplicate codes, expiry dates, usage limits, and active state
-- Updated event/movie/sports listing filters so single-select filters behave correctly
-- Removed the `Premium` price filter option from listing pages
-- Added case-insensitive backend matching for category, language, genre, format, and tag filters
-- Updated add-event suggested seat layouts to match current movie, sports, and event presets used in the admin form
-
-## Demo Flow
-
-1. Register or log in as a normal user.
-2. Browse movies, sports, and events.
-3. Open an event and show seat selection.
-4. Continue to payment and explain Razorpay verification.
-5. Show booking confirmation and ticket view.
-6. Open wishlist and bookings.
-7. Log in as admin or organizer and show dashboard tools.
-
-## Future Scope
-
-- analytics expansion for admin and organizer roles
-- notifications and reminders
-- queue-based email/ticket jobs
-- caching and performance optimization
-- deeper recommendation tuning
-- deployment automation and monitoring
-
-## Author
-
-**Padvijatin**
-
-GitHub repository: `https://github.com/padvijatin/TicketHub-Mern-Major-Proj`

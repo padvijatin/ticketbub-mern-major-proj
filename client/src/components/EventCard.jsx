@@ -105,7 +105,11 @@ const EventCardSkeleton = ({ size = "default" }) => {
   );
 };
 
-const EventCard = ({ event = {}, isLoading = false, size = "default" }) => {
+const EventCard = ({
+  event = {},
+  isLoading = false,
+  size = "default",
+}) => {
   const primaryImage = resolvePosterSource(event.image || event.poster);
   const [imageSrc, setImageSrc] = useState(primaryImage);
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -118,7 +122,6 @@ const EventCard = ({ event = {}, isLoading = false, size = "default" }) => {
     ? "min-h-[5rem] text-[1.7rem] sm:min-h-[5.4rem] sm:text-[1.85rem]"
     : "min-h-[4.8rem] text-[1.65rem] sm:min-h-[5.2rem] sm:text-[1.8rem]";
   const isLiked = isWishlisted(event) || Boolean(event.isWishlisted || event.liked);
-
   useEffect(() => {
     setImageSrc(primaryImage);
   }, [primaryImage]);
@@ -172,7 +175,7 @@ const EventCard = ({ event = {}, isLoading = false, size = "default" }) => {
             <img
               src={imageSrc}
               alt={title}
-              className="h-full w-full object-cover"
+              className="poster-card-image"
               onError={handleImageError}
             />
           ) : null}

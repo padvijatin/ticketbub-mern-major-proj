@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { MapComponent } from "../components/MapComponent.jsx";
+import HeroPosterCard from "../components/HeroPosterCard.jsx";
 import PosterImage from "../components/PosterImage.jsx";
 import { fallbackPosterImage } from "../components/posterImageUtils.js";
 import { Rating } from "../components/Rating.jsx";
@@ -225,32 +226,63 @@ export const EventDetails = () => {
           <span className="font-medium text-[var(--color-text-primary)]">{event.title}</span>
         </div>
 
-        <div className="relative overflow-hidden rounded-[3rem] border border-[rgba(28,28,28,0.06)] bg-white p-[1.6rem] shadow-[var(--shadow-soft)]">
-          <div className="relative aspect-[16/7] overflow-hidden rounded-[2.4rem] bg-[linear-gradient(135deg,#1c1c1c_0%,#7b3fe4_46%,#f84464_100%)]">
-            <PosterImage src={event.poster} alt={event.title} className="h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(28,28,28,0.12)_0%,rgba(28,28,28,0.18)_38%,rgba(28,28,28,0.68)_100%)]" />
+        <div className="relative overflow-hidden rounded-[3rem] border border-[rgba(28,28,28,0.06)] bg-white shadow-[var(--shadow-soft)]">
+          <div className="absolute inset-0">
+            <PosterImage
+              src={event.poster}
+              alt={event.title}
+              className="h-full w-full scale-[1.14] object-cover opacity-68 blur-[38px]"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.84)_0%,rgba(255,255,255,0.76)_42%,rgba(255,255,255,0.5)_66%,rgba(255,255,255,0.66)_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.34),transparent_26%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.2),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.24)_100%)]" />
+          </div>
 
-            <Link
-              to={event.contentType === "movie" ? "/movies" : event.contentType === "sports" ? "/sports" : "/events"}
-              className="absolute left-[1.8rem] top-[1.8rem] inline-flex h-[4.6rem] w-[4.6rem] items-center justify-center rounded-full bg-white/92 text-[var(--color-text-primary)] shadow-[0_14px_30px_rgba(28,28,28,0.12)] transition-colors duration-200 hover:text-[var(--color-primary)]"
-            >
-              <ChevronLeft className="h-[2rem] w-[2rem]" />
-            </Link>
+          <div className="relative z-10 grid min-h-[32rem] gap-[1.8rem] p-[1.6rem] md:min-h-[42rem] md:grid-cols-[minmax(0,1.14fr)_clamp(23rem,24vw,29rem)] md:items-center md:gap-[2.4rem] md:p-[2rem] lg:px-[2.4rem]">
+            <div className="flex h-full flex-col justify-between py-[0.2rem] md:py-[0.6rem]">
+              <div className="flex items-start justify-between gap-[1rem]">
+                <Link
+                  to={event.contentType === "movie" ? "/movies" : event.contentType === "sports" ? "/sports" : "/events"}
+                  className="inline-flex h-[4.6rem] w-[4.6rem] items-center justify-center rounded-full bg-white/92 text-[var(--color-text-primary)] shadow-[0_14px_30px_rgba(28,28,28,0.12)] transition-colors duration-200 hover:text-[var(--color-primary)]"
+                >
+                  <ChevronLeft className="h-[2rem] w-[2rem]" />
+                </Link>
 
-            <div className="absolute right-[1.8rem] top-[1.8rem]">
-              <span className="inline-flex rounded-full bg-[var(--color-primary)] px-[1.3rem] py-[0.75rem] text-[1.2rem] font-extrabold text-[var(--color-text-light)]">
-                Popular
-              </span>
+                <span className="inline-flex rounded-full bg-[var(--color-primary)] px-[1.3rem] py-[0.75rem] text-[1.2rem] font-extrabold text-[var(--color-text-light)] shadow-[0_14px_28px_rgba(248,68,100,0.18)]">
+                  Popular
+                </span>
+              </div>
+
+              <div className="mt-[1.8rem]">
+                <p className="inline-flex rounded-full border border-white/70 bg-white/44 px-[1.15rem] py-[0.65rem] text-[1.15rem] font-bold uppercase tracking-[0.08em] text-[rgba(28,28,28,0.72)]">
+                  {event.category}
+                </p>
+                <h1 className="mt-[1.4rem] max-w-[14ch] overflow-hidden text-[clamp(2.8rem,4.3vw,4.9rem)] leading-[1.02] font-extrabold tracking-[-0.05em] text-[var(--color-text-primary)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                  {event.title}
+                </h1>
+                {event.subtitle ? (
+                  <p className="mt-[1rem] max-w-[62rem] overflow-hidden text-[1.45rem] leading-[1.7] text-[rgba(28,28,28,0.82)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] md:text-[1.5rem]">
+                    {event.subtitle}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="mt-[1.8rem] flex flex-wrap gap-[0.8rem]">
+                <span className="inline-flex items-center gap-[0.65rem] rounded-full border border-white/65 bg-white/42 px-[1.1rem] py-[0.82rem] text-[1.25rem] font-medium text-[rgba(28,28,28,0.82)]">
+                  <CalendarDays className="h-[1.55rem] w-[1.55rem] text-[var(--color-primary)]" />
+                  {eventDate}
+                </span>
+                <span className="inline-flex items-center gap-[0.65rem] rounded-full border border-white/65 bg-white/42 px-[1.1rem] py-[0.82rem] text-[1.25rem] font-medium text-[rgba(28,28,28,0.82)]">
+                  <Clock3 className="h-[1.55rem] w-[1.55rem] text-[var(--color-primary)]" />
+                  {eventTime}
+                </span>
+                <span className="inline-flex items-center gap-[0.65rem] rounded-full border border-white/65 bg-white/42 px-[1.1rem] py-[0.82rem] text-[1.25rem] font-medium text-[rgba(28,28,28,0.82)]">
+                  <MapPin className="h-[1.55rem] w-[1.55rem] text-[var(--color-primary)]" />
+                  <span className="truncate">{event.venue}, {event.city}</span>
+                </span>
+              </div>
             </div>
 
-            <div className="absolute inset-x-[2rem] bottom-[2rem]">
-              <h1 className="max-w-[14ch] text-[clamp(3rem,4.6vw,5rem)] leading-[1] font-extrabold tracking-[-0.05em] text-white">
-                {event.title}
-              </h1>
-              <p className="mt-[1rem] max-w-[64rem] text-[1.5rem] leading-[1.7] text-white/84">
-                {event.subtitle}
-              </p>
-            </div>
+            <HeroPosterCard image={event.poster} title={event.title} />
           </div>
         </div>
 

@@ -63,7 +63,7 @@ export const About = () => {
           <span className="inline-flex rounded-full border border-[rgba(248,68,100,0.14)] bg-white px-[1.1rem] py-[0.65rem] text-[1.05rem] font-extrabold uppercase tracking-[0.1em] text-[var(--color-primary)] shadow-[0_10px_25px_rgba(28,28,28,0.04)]">
             About TicketHub
           </span>
-          <h1 className="mt-[1.4rem] text-[clamp(3.4rem,4.8vw,5.6rem)] font-extrabold tracking-[-0.05em] text-[var(--color-primary)]">
+          <h1 className="mt-[1.4rem] text-[clamp(3.4rem,4.8vw,5.6rem)] font-extrabold tracking-[-0.05em] text-[var(--color-text-primary)]">
             About TicketHub
           </h1>
           <p className="mx-auto mt-[1.4rem] max-w-[78rem] text-[1.7rem] leading-[1.8] text-[var(--color-text-secondary)] md:text-[1.85rem]">
