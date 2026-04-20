@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
@@ -88,6 +88,7 @@ const groupSeatZones = (seatZones = []) => {
 
 export const EventDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { authorizationToken, isLoggedIn } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -200,6 +201,8 @@ export const EventDetails = () => {
   const eventPrice = formatCurrency(event.price);
   const aboutParagraphs = getAboutParagraphs(event, eventDate, eventTime);
   const zoneGroups = groupSeatZones(event.seatZones || []);
+  const fallbackBackRoute =
+    event.contentType === "movie" ? "/movies" : event.contentType === "sports" ? "/sports" : "/events";
   const terms = [
     "Entry is subject to valid ticket and photo ID.",
     "No refunds on confirmed bookings.",
@@ -240,12 +243,20 @@ export const EventDetails = () => {
           <div className="relative z-10 grid min-h-[32rem] gap-[1.8rem] p-[1.6rem] md:min-h-[42rem] md:grid-cols-[minmax(0,1.14fr)_clamp(23rem,24vw,29rem)] md:items-center md:gap-[2.4rem] md:p-[2rem] lg:px-[2.4rem]">
             <div className="flex h-full flex-col justify-between py-[0.2rem] md:py-[0.6rem]">
               <div className="flex items-start justify-between gap-[1rem]">
-                <Link
-                  to={event.contentType === "movie" ? "/movies" : event.contentType === "sports" ? "/sports" : "/events"}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.history.length > 1) {
+                      navigate(-1);
+                      return;
+                    }
+
+                    navigate(fallbackBackRoute);
+                  }}
                   className="inline-flex h-[4.6rem] w-[4.6rem] items-center justify-center rounded-full bg-white/92 text-[var(--color-text-primary)] shadow-[0_14px_30px_rgba(28,28,28,0.12)] transition-colors duration-200 hover:text-[var(--color-primary)]"
                 >
                   <ChevronLeft className="h-[2rem] w-[2rem]" />
-                </Link>
+                </button>
 
                 <span className="inline-flex rounded-full bg-[var(--color-primary)] px-[1.3rem] py-[0.75rem] text-[1.2rem] font-extrabold text-[var(--color-text-light)] shadow-[0_14px_28px_rgba(248,68,100,0.18)]">
                   Popular
