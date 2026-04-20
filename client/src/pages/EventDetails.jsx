@@ -230,7 +230,7 @@ export const EventDetails = () => {
         </div>
 
         <div className="relative overflow-hidden rounded-[3rem] border border-[rgba(28,28,28,0.06)] bg-white shadow-[var(--shadow-soft)]">
-          <div className="absolute inset-0">
+          <div className="pointer-events-none absolute inset-0">
             <PosterImage
               src={event.poster}
               alt={event.title}
@@ -241,7 +241,7 @@ export const EventDetails = () => {
           </div>
 
           <div className="relative z-10 grid min-h-[32rem] gap-[1.8rem] p-[1.6rem] md:min-h-[42rem] md:grid-cols-[minmax(0,1.14fr)_clamp(23rem,24vw,29rem)] md:items-center md:gap-[2.4rem] md:p-[2rem] lg:px-[2.4rem]">
-            <div className="flex h-full flex-col justify-between py-[0.2rem] md:py-[0.6rem]">
+            <div className="pointer-events-auto flex h-full flex-col justify-between py-[0.2rem] md:py-[0.6rem]">
               <div className="flex items-start justify-between gap-[1rem]">
                 <button
                   type="button"

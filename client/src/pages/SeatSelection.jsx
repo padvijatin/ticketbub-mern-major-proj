@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { TheaterLayout } from "../components/booking/TheaterLayout.jsx";
@@ -16,6 +16,7 @@ const layoutLabels = {
 
 export const SeatSelection = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { authorizationToken } = useAuth();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["event", id, authorizationToken],
@@ -54,6 +55,16 @@ export const SeatSelection = () => {
         <div className="flex items-start gap-[1.2rem]">
           <Link
             to={`/event/${event.id}`}
+            onClick={(eventObject) => {
+              eventObject.preventDefault();
+
+              if (window.history.length > 1) {
+                navigate(-1);
+                return;
+              }
+
+              navigate(`/event/${event.id}`);
+            }}
             className="inline-flex h-[4rem] w-[4rem] shrink-0 items-center justify-center rounded-full border border-[rgba(28,28,28,0.08)] bg-white text-[var(--color-text-primary)] shadow-[var(--shadow-soft)] transition-colors duration-200 hover:border-[rgba(248,68,100,0.18)] hover:text-[var(--color-primary)]"
           >
             <ChevronLeft className="h-[1.8rem] w-[1.8rem]" />
